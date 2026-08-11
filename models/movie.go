@@ -1,3 +1,3 @@
-package model
+package models
 
 // TODO structs + json tags
