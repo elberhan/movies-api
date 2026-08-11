@@ -20,6 +20,7 @@
 
 !Makefile
 !.githooks/pre-commit
+!*.sql
 
 # ...even if they are in subdirectories
 !*/
