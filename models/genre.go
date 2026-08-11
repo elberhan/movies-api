@@ -1,3 +1,6 @@
 package models
 
-// TODO structs + json tags
+type Genre struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}

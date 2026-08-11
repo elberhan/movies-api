@@ -1,3 +1,8 @@
 package models
 
-// TODO structs + json tags
+type Movie struct {
+	ID          int    `json:"id"`
+	Title       string `json:"title"`
+	ReleaseYear int    `json:"releaseYear"`
+	Duration    int    `json:"duration"`
+}
