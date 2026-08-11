@@ -1,42 +1,36 @@
-# Nice group project template
+# MOVIES API
 
-✅ The `main` branch is protected: pushes and force pushes are disabled, but pull requests are allowed.
+## DEV NOTE: Check if sqlite3 driver works normally
+`main.go` contains examples of how to use SQLite with go (from https://github.com/mattn/go-sqlite3/blob/v1.14.49/_example/simple/simple.go). Run it with `go run ./...`
 
-✅ Pull requests require a minimum of 1 approval (though the repository owner can merge without approval).
+[brief description]
 
-✅ Merging is blocked if changes are requested: even with sufficient approvals, a PR cannot be merged if reviewers have requested changes.
+## Project overview
 
-✅ Pre-commit hook is included.
+...
 
-✅ Allowlist gitignore for whitelist-style adepts 
+## Setup and installation instructions
 
-❗ Make sure to select checkboxes `Branch Protection` and `Git content (default branch)` when creating a new repo using this template.
+...
 
-## About pre-commit hooks
+### Git hooks
 
-A pre-commit hook is a script that runs automatically **before** a Git commit is finalized. It typically checks your changes (e.g., linting, tests, formatting) and can block the commit if issues are detected.
+This project ships a `pre-commit` hook (in `.githooks/`) that runs `gofmt` and `go vet` on staged Go files. Install it once after cloning:
 
-The hook included in this repository template allows you to:
+    make init
 
-1. [Format](https://pkg.go.dev/cmd/go/internal/fmtcmd) staged `.go` files.
-2. Run [`go vet`](https://pkg.go.dev/cmd/vet) on all Go files in the repository, including those in nested folders.
+To bypass the hook for a single commit:
 
----
+    git commit -m '<your_message>' --no-verify
 
-## Install the pre-commit hook (optional)
+## Usage guide
 
-Git **never** runs hooks from a freshly cloned repository. Each team member must opt in manually:
+...
 
-```sh
-make init
-```
+## Additional features
 
-This command runs `git config core.hooksPath .githooks` to inform Git about the new location for hooks, **instead of** the default `.git/hooks/`.
+...
 
-If no `.go` files are staged, the hook does nothing.
+## Bonus functionality
 
-To bypass the hook for a single commit, use:
-
-```sh
-git commit --no-verify
-```
+...
