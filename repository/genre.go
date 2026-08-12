@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 	"gitea.kood.tech/nikolailetshev/movies-api/models"
 )
 
@@ -24,4 +25,17 @@ func (r *GenreRepository) Create(name string) (*models.Genre, error) {
 		return nil, err
 	}
 	return &models.Genre{ID: int(id), Name: name}, nil
+}
+
+func (r *GenreRepository) GetByID(id int) (*models.Genre, error) {
+	row := r.db.QueryRow("SELECT id, name FROM Genre WHERE id = ?", id)
+	var g models.Genre
+	err := row.Scan(&g.ID, &g.Name)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, models.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &g, nil
 }
