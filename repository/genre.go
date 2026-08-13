@@ -89,3 +89,29 @@ func (r *GenreRepository) MovieCount(id int) (int, error) {
 	}
 	return count, nil
 }
+
+func (r *GenreRepository) GetMoviesByGenre(genreID int, limit, offset int) ([]*models.Movie, error) {
+	rows, err := r.db.Query(`
+		SELECT m.id, m.title, m.releaseYear, m.duration
+		FROM Movie m
+		JOIN movie_genres mg ON mg.movie_id = m.id
+		WHERE mg.genre_id = ?
+		LIMIT ? OFFSET ?`, genreID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	movies := []*models.Movie{}
+	for rows.Next() {
+		var m models.Movie
+		if err := rows.Scan(&m.ID, &m.Title, &m.ReleaseYear, &m.Duration); err != nil {
+			return nil, err
+		}
+		movies = append(movies, &m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return movies, nil
+}
