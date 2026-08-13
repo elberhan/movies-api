@@ -115,3 +115,8 @@ func (r *GenreRepository) GetMoviesByGenre(genreID int, limit, offset int) ([]*m
 	}
 	return movies, nil
 }
+
+func (r *GenreRepository) DeleteGenreMovieLinks(genreID int) error {
+	_, err := r.db.Exec("DELETE FROM movie_genres WHERE genre_id = ?", genreID)
+	return err
+}
