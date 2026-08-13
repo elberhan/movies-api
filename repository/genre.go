@@ -80,3 +80,12 @@ func (r *GenreRepository) Delete(id int) error {
 	}
 	return nil
 }
+
+func (r *GenreRepository) MovieCount(id int) (int, error) {
+	var count int
+	err := r.db.QueryRow("SELECT COUNT(*) FROM movie_genres WHERE genre_id = ?", id).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
