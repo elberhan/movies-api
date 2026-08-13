@@ -65,3 +65,18 @@ func (r *GenreRepository) GetAll(limit, offset int) ([]*models.Genre, int, error
 	}
 	return genres, total, nil
 }
+
+func (r *GenreRepository) Delete(id int) error {
+	result, err := r.db.Exec("DELETE FROM Genre WHERE id = ?", id)
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return models.ErrNotFound
+	}
+	return nil
+}
