@@ -53,7 +53,7 @@ func (s *GenreService) GetAll(page, size int) (*models.Page, error) {
 	}, nil
 }
 
-// Update renames a genre after validating the new name
+// Update renames a genre after validating the new name.
 func (s *GenreService) Update(id int, name string) (*models.Genre, error) {
 	if id < 1 {
 		return nil, models.ErrNotFound
@@ -63,6 +63,39 @@ func (s *GenreService) Update(id int, name string) (*models.Genre, error) {
 		return nil, err
 	}
 	return s.repo.Update(id, name)
+}
+
+func (s *GenreService) Delete(id int, force bool) error {
+	genre, err := s.GetByID(id)
+	if err != nil {
+		return err
+	}
+
+	count, err := s.repo.MovieCount(id)
+	if err != nil {
+		return err
+	}
+
+	if count > 0 && !force {
+		return fmt.Errorf("%w: cannot delete genre '%s' because it has %d associated movies",
+			models.ErrHasRelations, genre.Name, count)
+	}
+
+	if force && count > 0 {
+		if err := s.repo.DeleteGenreMovieLinks(id); err != nil {
+			return err
+		}
+	}
+
+	return s.repo.Delete(id)
+}
+
+func (s *GenreService) MoviesInGenre(id, page, size int) ([]*models.Movie, error) {
+	if _, err := s.GetByID(id); err != nil {
+		return nil, err
+	}
+	page, size = normalizePagination(page, size)
+	return s.repo.GetMoviesByGenre(id, size, page*size)
 }
 
 //helpers
