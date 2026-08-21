@@ -53,6 +53,18 @@ func (s *GenreService) GetAll(page, size int) (*models.Page, error) {
 	}, nil
 }
 
+// Update renames a genre after validating the new name
+func (s *GenreService) Update(id int, name string) (*models.Genre, error) {
+	if id < 1 {
+		return nil, models.ErrNotFound
+	}
+	name, err := validateName(name)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.Update(id, name)
+}
+
 //helpers
 
 func validateName(name string) (string, error) {
