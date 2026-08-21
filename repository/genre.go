@@ -66,6 +66,22 @@ func (r *GenreRepository) GetAll(limit, offset int) ([]*models.Genre, int, error
 	return genres, total, nil
 }
 
+func (r *GenreRepository) Update(id int, name string) (*models.Genre, error) {
+	result, err := r.db.Exec("UPDATE Genre SET name = ? WHERE id = ?", name, id)
+	if err != nil {
+		return nil, err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if affected == 0 {
+		return nil, models.ErrNotFound
+	}
+	return r.GetByID(id)
+}
+
 func (r *GenreRepository) Delete(id int) error {
 	result, err := r.db.Exec("DELETE FROM Genre WHERE id = ?", id)
 	if err != nil {
