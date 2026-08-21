@@ -37,6 +37,22 @@ func (s *GenreService) GetByID(id int) (*models.Genre, error) {
 	return s.repo.GetByID(id)
 }
 
+func (s *GenreService) GetAll(page, size int) (*models.Page, error) {
+	page, size = normalizePagination(page, size)
+	genres, total, err := s.repo.GetAll(size, page*size)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.Page{
+		Content:       toAnySlice(genres),
+		Page:          page,
+		Size:          size,
+		TotalElements: total,
+		TotalPages:    totalPages(total, size),
+	}, nil
+}
+
 //helpers
 
 func validateName(name string) (string, error) {
