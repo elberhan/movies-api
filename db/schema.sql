@@ -41,3 +41,22 @@ CREATE TABLE IF NOT EXISTS movie_actors (
     FOREIGN KEY (movie_id) REFERENCES Movie(id) ON DELETE CASCADE,
     FOREIGN KEY (actor_id) REFERENCES Actor(id) ON DELETE CASCADE
 ) STRICT;
+
+
+-- indexes. should significantly speed up the lookup for a huge databases,
+-- for example with 1m records, but may slow down writing.
+
+-- useful to filter movie by specific genre
+CREATE INDEX IF NOT EXISTS idx_moviegenre_genre ON movie_genres(genre_id);
+
+-- useful to search all the movies with specific actor
+CREATE INDEX IF NOT EXISTS idx_movieactor_actor ON movie_actors(actor_id);
+
+-- for finding movies released in specific year
+CREATE INDEX IF NOT EXISTS idx_movie_releaseYear ON Movie(releaseYear);
+
+-- actors sorted by name, case-insensitive check
+CREATE INDEX IF NOT EXISTS idx_actor_name ON Actor(name COLLATE NOCASE);
+
+-- movies sorted by title, case-insensitive check
+CREATE INDEX IF NOT EXISTS idx_movie_title ON Movie(title COLLATE NOCASE);
