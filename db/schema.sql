@@ -1,16 +1,15 @@
 -- actors table
 CREATE TABLE IF NOT EXISTS Actor (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    birthDate TEXT NOT NULL
-        CHECK (birthDate IS date(birthDate))
+    name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+    birthDate TEXT NOT NULL CHECK (birthDate IS date(birthDate))
 ) STRICT;
 
 
 -- movies table
 CREATE TABLE IF NOT EXISTS Movie (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
+    title TEXT NOT NULL CHECK (length(trim(title)) > 0),
     releaseYear INTEGER NOT NULL CHECK (releaseYear BETWEEN 1888 AND 2100),
     duration INTEGER NOT NULL CHECK (duration > 0)
 ) STRICT;
@@ -19,7 +18,7 @@ CREATE TABLE IF NOT EXISTS Movie (
 -- genres table
 CREATE TABLE IF NOT EXISTS Genre (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE
+    name TEXT NOT NULL COLLATE NOCASE UNIQUE CHECK (length(trim(name)) > 0)
 ) STRICT;
 
 
