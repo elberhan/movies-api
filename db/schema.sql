@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS Movie (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL CHECK (length(trim(title)) > 0),
     releaseYear INTEGER NOT NULL CHECK (releaseYear BETWEEN 1888 AND 2100),
+    -- duration is in seconds
     duration INTEGER NOT NULL CHECK (duration > 0)
 ) STRICT;
 
@@ -22,8 +23,8 @@ CREATE TABLE IF NOT EXISTS Genre (
 ) STRICT;
 
 
--- joint table for Genre & Movie
-CREATE TABLE IF NOT EXISTS movie_genres (
+-- joint table for Movie & Genre
+CREATE TABLE IF NOT EXISTS MovieGenre (
     movie_id INTEGER NOT NULL,
     genre_id INTEGER NOT NULL,
     PRIMARY KEY (movie_id, genre_id),
@@ -33,7 +34,7 @@ CREATE TABLE IF NOT EXISTS movie_genres (
 
 
 -- joint table for Movie & Actor
-CREATE TABLE IF NOT EXISTS movie_actors (
+CREATE TABLE IF NOT EXISTS MovieActor (
     movie_id INTEGER NOT NULL,
     actor_id INTEGER NOT NULL,
     PRIMARY KEY (movie_id, actor_id),
@@ -46,10 +47,10 @@ CREATE TABLE IF NOT EXISTS movie_actors (
 -- for example with 1m records, but may slow down writing.
 
 -- useful to filter movie by specific genre
-CREATE INDEX IF NOT EXISTS idx_moviegenre_genre ON movie_genres(genre_id);
+CREATE INDEX IF NOT EXISTS idx_moviegenre_genre ON MovieGenre(genre_id);
 
 -- useful to search all the movies with specific actor
-CREATE INDEX IF NOT EXISTS idx_movieactor_actor ON movie_actors(actor_id);
+CREATE INDEX IF NOT EXISTS idx_movieactor_actor ON MovieActor(actor_id);
 
 -- for finding movies released in specific year
 CREATE INDEX IF NOT EXISTS idx_movie_releaseYear ON Movie(releaseYear);
