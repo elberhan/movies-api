@@ -11,14 +11,13 @@ import (
 func writeError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, models.ErrNotFound):
-		http.Error(w, err.Error(), http.StatusNotFound) // 404
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 
-	case errors.Is(err, models.ErrInvalidInput),
-		errors.Is(err, models.ErrHasRelations):
-		http.Error(w, err.Error(), http.StatusBadRequest) // 400
+	case errors.Is(err, models.ErrInvalidInput), errors.Is(err, models.ErrHasRelations):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 
 	default:
-		log.Printf("unhandled error: %v", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError) // 500
+		log.Printf("internal: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 	}
 }
