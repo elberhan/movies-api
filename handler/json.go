@@ -3,12 +3,16 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"gitea.kood.tech/nikolailetshev/movies-api/models"
 	"log"
 	"net/http"
+
+	"gitea.kood.tech/nikolailetshev/movies-api/models"
 )
 
-// Used for every success response: 200 OK, 201 Created, paginated lists...
+// writeJSON puts the JSON label on the response,
+// stamps it with the caller's status code, and
+// then writes the data as JSON into the body,
+// logging (not forwarding) any encoding error.
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
