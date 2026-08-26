@@ -15,3 +15,6 @@ var seed string
 
 var _ = schema // for debug
 var _ = seed   // for debug
+
+// TODO: open db like this to make foreign keys active
+// db, err := sql.Open("sqlite3", "file:movies.db?_foreign_keys=on")
