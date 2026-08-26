@@ -60,3 +60,31 @@ CREATE INDEX IF NOT EXISTS idx_actor_name ON Actor(name COLLATE NOCASE);
 
 -- movies sorted by title, case-insensitive check
 CREATE INDEX IF NOT EXISTS idx_movie_title ON Movie(title COLLATE NOCASE);
+
+
+-- triggers
+-- their job is to make sure that IDs are immutable
+
+CREATE TRIGGER IF NOT EXISTS trg_actor_id_immutable
+BEFORE UPDATE OF id ON Actor
+FOR EACH ROW
+WHEN NEW.id IS NOT OLD.id
+BEGIN
+    SELECT RAISE(ABORT, "Actor.id is immutable");
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_movie_id_immutable
+BEFORE UPDATE OF id ON Movie
+FOR EACH ROW
+WHEN NEW.id IS NOT OLD.id
+BEGIN
+    SELECT RAISE(ABORT, "Movie.id is immutable");
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_genre_id_immutable
+BEFORE UPDATE OF id ON Genre
+FOR EACH ROW
+WHEN NEW.id IS NOT OLD.id
+BEGIN
+    SELECT RAISE(ABORT, "Genre.id is immutable");
+END;
