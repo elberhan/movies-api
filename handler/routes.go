@@ -16,6 +16,11 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 	genreHandler := NewGenreHandler(genreService)
 	genreHandler.RegisterGenreRoutes(mux)
 
+	// Actor
+	actorRepo := repository.NewActorRepository(db)
+	actorService := service.NewActorService(actorRepo)
+	actorHandler := NewActorHandler(actorService)
+	actorHandler.RegisterActorRoutes(mux)
+
 	// TODO: Movie
-	// TODO: Actor
 }
