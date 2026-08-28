@@ -100,7 +100,7 @@ func (r *GenreRepository) Delete(id int) error {
 
 func (r *GenreRepository) MovieCount(id int) (int, error) {
 	var count int
-	err := r.db.QueryRow("SELECT COUNT(*) FROM MovieGenre WHERE genre_id = ?", id).Scan(&count)
+	err := r.db.QueryRow("SELECT COUNT(*) FROM movie_genres WHERE genre_id = ?", id).Scan(&count)
 	if err != nil {
 		return 0, err
 	}
@@ -111,7 +111,7 @@ func (r *GenreRepository) GetMoviesByGenre(genreID int, limit, offset int) ([]*m
 	rows, err := r.db.Query(`
 		SELECT m.id, m.title, m.releaseYear, m.duration
 		FROM Movie m
-		JOIN MovieGenre mg ON mg.movie_id = m.id
+		JOIN movie_genres mg ON mg.movie_id = m.id
 		WHERE mg.genre_id = ?
 		LIMIT ? OFFSET ?`, genreID, limit, offset)
 	if err != nil {
@@ -134,6 +134,6 @@ func (r *GenreRepository) GetMoviesByGenre(genreID int, limit, offset int) ([]*m
 }
 
 func (r *GenreRepository) DeleteGenreMovieLinks(genreID int) error {
-	_, err := r.db.Exec("DELETE FROM MovieGenre WHERE genre_id = ?", genreID)
+	_, err := r.db.Exec("DELETE FROM movie_genres WHERE genre_id = ?", genreID)
 	return err
 }
