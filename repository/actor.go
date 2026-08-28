@@ -123,7 +123,7 @@ func (r *ActorRepository) Delete(id int) error {
 
 func (r *ActorRepository) MovieCount(id int) (int, error) {
 	var count int
-	err := r.db.QueryRow("SELECT COUNT(*) FROM MovieActor WHERE actor_id = ?", id).Scan(&count)
+	err := r.db.QueryRow("SELECT COUNT(*) FROM movie_actors WHERE actor_id = ?", id).Scan(&count)
 	if err != nil {
 		return 0, err
 	}
@@ -134,7 +134,7 @@ func (r *ActorRepository) GetMoviesByActor(actorID int) ([]*models.Movie, error)
 	rows, err := r.db.Query(`
 		SELECT m.id, m.title, m.releaseYear, m.duration
 		FROM Movie m
-		JOIN MovieActor ma ON ma.movie_id = m.id
+		JOIN movie_actors ma ON ma.movie_id = m.id
 		WHERE ma.actor_id = ?
 		ORDER BY m.title`, actorID)
 	if err != nil {
@@ -157,6 +157,6 @@ func (r *ActorRepository) GetMoviesByActor(actorID int) ([]*models.Movie, error)
 }
 
 func (r *ActorRepository) DeleteActorMovieLinks(actorID int) error {
-	_, err := r.db.Exec("DELETE FROM MovieActor WHERE actor_id = ?", actorID)
+	_, err := r.db.Exec("DELETE FROM movie_actors WHERE actor_id = ?", actorID)
 	return err
 }
