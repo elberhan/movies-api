@@ -67,15 +67,33 @@ func (s *ActorService) GetByName(name string, page, size int) (*models.Page, err
 	}, nil
 }
 
-func (s *ActorService) Update(id int, name, birthDate string) (*models.Actor, error) {
-	name, err := validateName(name)
+// UpdatePartial applies a PATCH: only provided fields are changed.
+// name and birthDate are pointers so an absent field is distinguishable
+// from an empty one.
+func (s *ActorService) UpdatePartial(id int, name, birthDate *string) (*models.Actor, error) {
+	actor, err := s.GetByID(id)
 	if err != nil {
 		return nil, err
 	}
-	if err := validateBirthDate(birthDate); err != nil {
-		return nil, err
+
+	// keep existing values for fields not present in the request
+	newName := actor.Name
+	if name != nil {
+		newName, err = validateName(*name)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return s.actorRepo.Update(id, name, birthDate)
+
+	newBirthDate := actor.BirthDate
+	if birthDate != nil {
+		if err := validateBirthDate(*birthDate); err != nil {
+			return nil, err
+		}
+		newBirthDate = *birthDate
+	}
+
+	return s.actorRepo.Update(id, newName, newBirthDate)
 }
 
 func (s *ActorService) Delete(id int, force bool) error {
