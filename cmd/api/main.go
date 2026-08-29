@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -13,7 +14,16 @@ func main() {
 	var initDB bool
 	flag.BoolVar(&initDB, "init", false, "wipe the example tables and insert the seed data before serving")
 	flag.BoolVar(&initDB, "i", false, "shorthand for -init")
+
+	port := flag.Int("port", 8080, "TCP port the server listens on")
+
 	flag.Parse()
+
+	if *port < 1025 || *port > 65535 {
+		log.Fatalf("invalid port %d: must be between 1025 and 65535", *port)
+	}
+
+	addr := fmt.Sprintf(":%d", *port)
 
 	database, err := db.Open()
 	if err != nil {
@@ -31,6 +41,7 @@ func main() {
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux, database)
 
-	log.Println("server listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	fmt.Printf("server listening on http://localhost:%d/\n\n", *port)
+	log.Printf("started")
+	log.Fatal(http.ListenAndServe(addr, mux))
 }
