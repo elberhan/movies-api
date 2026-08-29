@@ -41,7 +41,6 @@ func main() {
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux, database)
 
-	fmt.Printf("server listening on http://localhost:%d/\n\n", *port)
-	log.Printf("started")
+	log.Printf("server listening on http://localhost:%d", *port)
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
