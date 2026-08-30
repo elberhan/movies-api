@@ -67,6 +67,9 @@ func (r *MovieRepository) GetAll(limit, offset int) (page []*models.Movie, total
 		`SELECT id, title, releaseYear, duration FROM Movie 
         ORDER BY id 
         LIMIT ? OFFSET ?`, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	for rows.Next() {
 		var m models.Movie
