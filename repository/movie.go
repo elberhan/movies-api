@@ -19,7 +19,8 @@ func NewMovieRepository(db *sql.DB) *MovieRepository {
 // Create creates a new record in the Movie table, returning *models.Movie (pointer to the
 // [models.Movie] object) and nil, or nil pointer and error.
 func (r *MovieRepository) Create(title string, releaseYear int, duration int) (*models.Movie, error) {
-	result, err := r.db.Exec("INSERT INTO Movie (title, releaseYear, duration) VALUES (?, ?, ?)",
+	result, err := r.db.Exec(
+		`INSERT INTO Movie (title, releaseYear, duration) VALUES (?, ?, ?)`,
 		title, releaseYear, duration)
 
 	if err != nil {
@@ -41,7 +42,8 @@ func (r *MovieRepository) Create(title string, releaseYear int, duration int) (*
 
 // GetByID fetches a specific movie record from the Movie table by its ID.
 func (r *MovieRepository) GetByID(id int) (*models.Movie, error) {
-	movieRow := r.db.QueryRow("SELECT * FROM Movie WHERE id = ?", id)
+	movieRow := r.db.QueryRow(
+		`SELECT id, title, releaseYear, duration FROM Movie WHERE id = ?`, id)
 
 	var m models.Movie
 
@@ -58,9 +60,12 @@ func (r *MovieRepository) GetByID(id int) (*models.Movie, error) {
 }
 
 // GetAll fetches one page of movies: limit rows, starting after offset rows.
-// The second return value (int) is the total row count in the table.
+// totalRows is the total row count in the Movie table.
 func (r *MovieRepository) GetAll(limit, offset int) (page []*models.Movie, totalRows int, err error) {
-	rows, err := r.db.Query("SELECT * FROM Movie ORDER BY name LIMIT ? OFFSET ?", limit, offset)
+	rows, err := r.db.Query(
+		`SELECT id, title, releaseYear, duration FROM Movie 
+        ORDER BY id 
+        LIMIT ? OFFSET ?`, limit, offset)
 
 	for rows.Next() {
 		var m models.Movie
