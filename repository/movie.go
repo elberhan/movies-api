@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"gitea.kood.tech/nikolailetshev/movies-api/models"
 )
@@ -335,8 +336,8 @@ func (r *MovieRepository) Delete(id int) error {
 	return nil
 }
 
-// ForceDelete removes all genre and actor links of the movie (not actors/genres 
-// themselves) and then the movie itself. Everything runs in one transaction, so 
+// ForceDelete removes all genre and actor links of the movie (not actors/genres
+// themselves) and then the movie itself. Everything runs in one transaction, so
 // nothing would be deleted in case of failure.
 func (r *MovieRepository) ForceDelete(id int) error {
 	tx, err := r.db.Begin()
@@ -367,12 +368,93 @@ func (r *MovieRepository) ForceDelete(id int) error {
 	return tx.Commit()
 }
 
+// SetGenres makes genreIDs the new genre list of the movie, in one transaction.
+// An empty genreIDs is an error.
 func (r *MovieRepository) SetGenres(movieID int, genreIDs []int) error {
-	// todo
-	return nil
+	if len(genreIDs) == 0 {
+		return fmt.Errorf("%w: a movie must have a minimum of one genre", models.ErrInvalidInput)
+	}
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := ensureMovieExists(tx, movieID); err != nil {
+		return err
+	}
+
+	// remove old links to genres and set new ones
+	if _, err := tx.Exec("DELETE FROM movie_genres WHERE movie_id = ?", movieID); err != nil {
+		return err
+	}
+
+	for _, genreID := range genreIDs {
+		var exists int
+		err := tx.QueryRow("SELECT 1 FROM Genre WHERE id = ?", genreID).Scan(&exists)
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("%w: genre with id %d does not exist", models.ErrInvalidInput, genreID)
+		}
+		if err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(
+			"INSERT OR IGNORE INTO movie_genres (movie_id, genre_id) VALUES (?, ?)", movieID, genreID); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
+// SetActors makes actorIDs the new actor list of the movie, in one transaction.
+// An empty actorIDs is an error: a movie must keep a minimum of one actor.
 func (r *MovieRepository) SetActors(movieID int, actorIDs []int) error {
-	// todo
-	return nil
+	if len(actorIDs) == 0 {
+		return fmt.Errorf("%w: a movie must have a minimum of one actor", models.ErrInvalidInput)
+	}
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := ensureMovieExists(tx, movieID); err != nil {
+		return err
+	}
+	// remove old links to actors and set new ones
+	if _, err := tx.Exec("DELETE FROM movie_actors WHERE movie_id = ?", movieID); err != nil {
+		return err
+	}
+
+	for _, actorID := range actorIDs {
+		var exists int
+		err := tx.QueryRow("SELECT 1 FROM Actor WHERE id = ?", actorID).Scan(&exists)
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("%w: actor with id %d does not exist", models.ErrInvalidInput, actorID)
+		}
+		if err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(
+			"INSERT OR IGNORE INTO movie_actors (movie_id, actor_id) VALUES (?, ?)", movieID, actorID); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// ensureMovieExists returns ErrNotFound if the movie is not in the database.
+func ensureMovieExists(tx *sql.Tx, movieID int) error {
+	var exists int
+	err := tx.QueryRow("SELECT 1 FROM Movie WHERE id = ?", movieID).Scan(&exists)
+	if errors.Is(err, sql.ErrNoRows) {
+		return models.ErrNotFound
+	}
+	return err
 }
