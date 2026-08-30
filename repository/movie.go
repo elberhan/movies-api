@@ -115,7 +115,7 @@ func (r *MovieRepository) GetByGenre(genreID, limit, offset int) (page []*models
 		return nil, 0, err
 	}
 
-    // get the number of total movies of specified genre
+	// get the number of total movies of specified genre
 	if err := r.db.QueryRow(
 		"SELECT COUNT(*) FROM movie_genres WHERE genre_id = ?", genreID).Scan(&totalMovies); err != nil {
 		return nil, 0, err
@@ -125,6 +125,7 @@ func (r *MovieRepository) GetByGenre(genreID, limit, offset int) (page []*models
 }
 
 // GetByYear fetches one page of movies released in the given year.
+// totalMovies is the count of all movies released in the given year.
 func (r *MovieRepository) GetByYear(year, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
 	rows, err := r.db.Query(
 		`SELECT id, title, releaseYear, duration FROM Movie
