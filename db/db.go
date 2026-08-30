@@ -11,6 +11,9 @@ import (
 //go:embed schema.sql
 var schema string
 
+//go:embed reset.sql
+var reset string
+
 //go:embed seed.sql
 var seed string
 
@@ -31,4 +34,30 @@ func Open() (*sql.DB, error) {
 	}
 
 	return db, nil
+}
+
+// Seed clears the tables using reset.sql and fills them again with
+// seed.sql. The reset and the insert share one transaction, so a
+// failure leaves the database exactly as it was, unchanged.
+func Seed(db *sql.DB) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin seed transaction: %w", err)
+	}
+
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(reset); err != nil {
+		return fmt.Errorf("reset seeded tables: %w", err)
+	}
+
+	if _, err := tx.Exec(seed); err != nil {
+		return fmt.Errorf("insert seed data: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit seed transaction: %w", err)
+	}
+
+	return nil
 }
