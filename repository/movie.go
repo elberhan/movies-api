@@ -193,9 +193,37 @@ func (r *MovieRepository) GetByActor(actorID, limit, offset int) (page []*models
 	return page, totalMovies, nil
 }
 
-func (r *MovieRepository) SearchByTitle(query, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
-	// todo
-	return nil, 0, nil
+// SearchByTitle fetches one page of movies whose title contains the query,
+// case-insensitively. totalMovies is the total count of matching movies.
+func (r *MovieRepository) SearchByTitle(query string, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
+	rows, err := r.db.Query(
+		`SELECT id, title, releaseYear, duration FROM Movie
+		WHERE title LIKE '%' || ? || '%'
+		ORDER BY id
+		LIMIT ? OFFSET ?`, query, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var m models.Movie
+		if err := rows.Scan(&m.ID, &m.Title, &m.ReleaseYear, &m.Duration); err != nil {
+			return nil, 0, err
+		}
+		page = append(page, &m)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	if err := r.db.QueryRow(
+		"SELECT COUNT(*) FROM Movie WHERE title LIKE '%' || ? || '%'", query).Scan(&totalMovies); err != nil {
+		return nil, 0, err
+	}
+
+	return page, totalMovies, nil
 }
 
 func (r *MovieRepository) Update(id int, m *models.Movie) (*models.Movie, error) {
