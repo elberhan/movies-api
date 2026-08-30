@@ -226,9 +226,24 @@ func (r *MovieRepository) SearchByTitle(query string, limit, offset int) (page [
 	return page, totalMovies, nil
 }
 
+// Update replaces the title, releaseYear and duration of the movie with the given id.
 func (r *MovieRepository) Update(id int, m *models.Movie) (*models.Movie, error) {
-	// todo
-	return nil, nil
+	result, err := r.db.Exec(
+		`UPDATE Movie SET title = ?, releaseYear = ?, duration = ? WHERE id = ?`,
+		m.Title, m.ReleaseYear, m.Duration, id)
+	if err != nil {
+		return nil, err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if affected == 0 { // UPDATE matched no row
+		return nil, models.ErrNotFound
+	}
+
+	return r.GetByID(id)
 }
 
 func (r *MovieRepository) Delete(id int) error {
