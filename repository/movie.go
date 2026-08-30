@@ -161,12 +161,7 @@ func (r *MovieRepository) GetByActor(actorID, limit, offset int) (page []*models
 	return nil
 }
 
-func (r *MovieRepository) GetByActor(actorID, limit, offset int) (page []*models.Movie, err error) {
-	// todo
-	return nil
-}
-
-func (r *MovieRepository) SearchByTitle(query, limit, offset int) (page []*models.Movie, err error) {
+func (r *MovieRepository) SearchByTitle(query, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
 	// todo
 	return nil
 }
