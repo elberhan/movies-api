@@ -87,12 +87,76 @@ func (r *MovieRepository) GetAll(limit, offset int) (page []*models.Movie, total
 	return page, totalRows, nil
 }
 
-func (r *MovieRepository) GetByGenre(genreID, limit, offset int) (page []*models.Movie, err error) {
-	rows, err 
-	return nil
+// GetByGenre fetches one page of the movies that belongs to the given genre.
+// totalRows is the total movie count of specified genre in the Movie table.
+func (r *MovieRepository) GetByGenre(genreID, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
+	rows, err := r.db.Query(
+		`SELECT m.id, m.title, m.releaseYear, m.duration
+		FROM Movie AS m
+		JOIN movie_genres AS mg ON mg.movie_id = m.id
+		WHERE mg.genre_id = ?
+		ORDER BY m.id
+		LIMIT ? OFFSET ?`, genreID, limit, offset)
+
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var m models.Movie
+		if err := rows.Scan(&m.ID, &m.Title, &m.ReleaseYear, &m.Duration); err != nil {
+			return nil, 0, err
+		}
+		page = append(page, &m)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+    // get the number of total movies of specified genre
+	if err := r.db.QueryRow(
+		"SELECT COUNT(*) FROM movie_genres WHERE genre_id = ?", genreID).Scan(&totalMovies); err != nil {
+		return nil, 0, err
+	}
+
+	return page, totalMovies, nil
 }
 
-func (r *MovieRepository) GetByYear(year, limit, offset int) (page []*models.Movie, err error) {
+// GetByYear fetches one page of movies released in the given year.
+func (r *MovieRepository) GetByYear(year, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
+	rows, err := r.db.Query(
+		`SELECT id, title, releaseYear, duration FROM Movie
+		WHERE releaseYear = ?
+		ORDER BY id
+		LIMIT ? OFFSET ?`, year, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var m models.Movie
+		if err := rows.Scan(&m.ID, &m.Title, &m.ReleaseYear, &m.Duration); err != nil {
+			return nil, 0, err
+		}
+		page = append(page, &m)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	if err := r.db.QueryRow(
+		"SELECT COUNT(*) FROM Movie WHERE releaseYear = ?", year).Scan(&totalMovies); err != nil {
+		return nil, 0, err
+	}
+
+	return page, totalMovies, nil
+}
+
+func (r *MovieRepository) GetByActor(actorID, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
 	// todo
 	return nil
 }
