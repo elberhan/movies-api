@@ -193,6 +193,76 @@ func (r *MovieRepository) GetByActor(actorID, limit, offset int) (page []*models
 	return page, totalMovies, nil
 }
 
+// GetActorsByMovie fetches one page of the actors starring in the given movie.
+// totalActors is the total actor count of that movie.
+func (r *MovieRepository) GetActorsByMovie(movieID, limit, offset int) (actors []*models.Actor, totalActors int, err error) {
+	rows, err := r.db.Query(
+		`SELECT a.id, a.name, a.birthDate
+		FROM Actor AS a
+		JOIN movie_actors AS ma ON ma.actor_id = a.id
+		WHERE ma.movie_id = ?
+		ORDER BY a.name
+		LIMIT ? OFFSET ?`, movieID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var a models.Actor
+		if err := rows.Scan(&a.ID, &a.Name, &a.BirthDate); err != nil {
+			return nil, 0, err
+		}
+		actors = append(actors, &a)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	if err := r.db.QueryRow(
+		"SELECT COUNT(*) FROM movie_actors WHERE movie_id = ?", movieID).Scan(&totalActors); err != nil {
+		return nil, 0, err
+	}
+
+	return actors, totalActors, nil
+}
+
+// GetGenresByMovie fetches one page of the genres of the given movie.
+// totalGenres is the total genre count of that movie.
+func (r *MovieRepository) GetGenresByMovie(movieID, limit, offset int) (genres []*models.Genre, totalGenres int, err error) {
+	rows, err := r.db.Query(
+		`SELECT g.id, g.name
+		FROM Genre AS g
+		JOIN movie_genres AS mg ON mg.genre_id = g.id
+		WHERE mg.movie_id = ?
+		ORDER BY g.name
+		LIMIT ? OFFSET ?`, movieID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var g models.Genre
+		if err := rows.Scan(&g.ID, &g.Name); err != nil {
+			return nil, 0, err
+		}
+		genres = append(genres, &g)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	if err := r.db.QueryRow(
+		"SELECT COUNT(*) FROM movie_genres WHERE movie_id = ?", movieID).Scan(&totalGenres); err != nil {
+		return nil, 0, err
+	}
+
+	return genres, totalGenres, nil
+}
+
 // SearchByTitle fetches one page of movies whose title contains the query,
 // case-insensitively. totalMovies is the total count of matching movies.
 func (r *MovieRepository) SearchByTitle(query string, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
@@ -305,14 +375,4 @@ func (r *MovieRepository) SetGenres(movieID int, genreIDs []int) error {
 func (r *MovieRepository) SetActors(movieID int, actorIDs []int) error {
 	// todo
 	return nil
-}
-
-func (r *MovieRepository) GetActorsByMovie(movieID int) ([]*models.Actor, error) {
-	// todo
-	return nil, nil
-}
-
-func (r *MovieRepository) GetGenresByMovie(movieID int) ([]*models.Genre, error) {
-	//todo
-	return nil, nil
 }
