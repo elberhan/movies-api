@@ -1,0 +1,569 @@
+{
+  "info": {
+    "_postman_id": "movies-api-collection",
+    "name": "Movies API",
+    "description": "End-to-end tests for the Movies API. Start the server with `go run ./...` (defaults to :8080) then run this collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Actors",
+      "item": [
+        {
+          "name": "Create actor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/actors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actors"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Edward Chen\",\n    \"birthDate\": \"1996-08-02\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"has numeric id\", () => pm.expect(pm.response.json().id).to.be.a('number'));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"actorId\", body.id);",
+                  "pm.collectionVariables.set(\"birthDate\", body.birthDate);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List actors (paginated)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/actors?page=0&size=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actors"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "5" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Page shape valid\", () => {",
+                  "    const p = pm.response.json();",
+                  "    pm.expect(p.content).to.be.an('array');",
+                  "    pm.expect(p.page).to.be.a('number');",
+                  "    pm.expect(p.size).to.be.a('number');",
+                  "    pm.expect(p.totalElements).to.be.a('number');",
+                  "    pm.expect(p.totalPages).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search actors by name",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/actors?name=chen",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actors"],
+              "query": [
+                { "key": "name", "value": "chen" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Page shape valid\", () => {",
+                  "    const p = pm.response.json();",
+                  "    pm.expect(p.content).to.be.an('array');",
+                  "    pm.expect(p.page).to.be.a('number');",
+                  "    pm.expect(p.size).to.be.a('number');",
+                  "    pm.expect(p.totalElements).to.be.a('number');",
+                  "    pm.expect(p.totalPages).to.be.a('number');",
+                  "});",
+                  "pm.test(\"case-insensitive partial match finds the actor\", () => {",
+                  "    const names = pm.response.json().content.map(a => a.name.toLowerCase());",
+                  "    pm.expect(names).to.include('edward chen');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get actor by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/actors/{{actorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actors", "{{actorId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"returns the actor\", () => {",
+                  "    const a = pm.response.json();",
+                  "    pm.expect(a.id).to.eql(pm.collectionVariables.get('actorId'));",
+                  "    pm.expect(a.name).to.not.be.empty;",
+                  "    pm.expect(a.birthDate).to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get actor by id - not found",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/actors/99999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actors", "99999"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"returns error object\", () => pm.expect(pm.response.json().error).to.exist);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create actor - invalid birthDate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/actors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actors"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Bad Date Actor\",\n    \"birthDate\": \"1990-13-40\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"returns error object mentioning birthDate\", () => {",
+                  "    pm.expect(pm.response.json().error).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Partial update actor",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/actors/{{actorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actors", "{{actorId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Edward Chen Jr.\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"name updated\", () => pm.expect(pm.response.json().name).to.eql('Edward Chen Jr.'));",
+                  "const before = pm.collectionVariables.get(\"birthDate\");",
+                  "pm.test(\"birthDate unchanged by partial PATCH\", () => {",
+                  "    pm.expect(pm.response.json().birthDate).to.eql(before);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete actor (force)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/actors/{{actorId}}?force=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actors", "{{actorId}}"],
+              "query": [
+                { "key": "force", "value": "true" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Genres",
+      "item": [
+        {
+          "name": "Create genre",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/genres",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "genres"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Action\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"genreId\", body.id);",
+                  "pm.test(\"has numeric id\", () => pm.expect(body.id).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List genres (paginated)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/genres?page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "genres"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Page shape valid\", () => {",
+                  "    const p = pm.response.json();",
+                  "    pm.expect(p.content).to.be.an('array');",
+                  "    pm.expect(p.page).to.be.a('number');",
+                  "    pm.expect(p.size).to.be.a('number');",
+                  "    pm.expect(p.totalElements).to.be.a('number');",
+                  "    pm.expect(p.totalPages).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get genre by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/genres/{{genreId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "genres", "{{genreId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get genre by id - not found",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/genres/99999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "genres", "99999"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"returns error object\", () => pm.expect(pm.response.json().error).to.exist);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create genre - empty name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/genres",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "genres"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"returns error object\", () => pm.expect(pm.response.json().error).to.exist);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update genre",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/genres/{{genreId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "genres", "{{genreId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Action & Adventure\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"name updated\", () => pm.expect(pm.response.json().name).to.eql('Action & Adventure'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete genre (force)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/genres/{{genreId}}?force=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "genres", "{{genreId}}"],
+              "query": [
+                { "key": "force", "value": "true" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Movies",
+      "description": "Placeholder - the Movie entity is not implemented yet. These will return 404 until Nikolai's Movie API lands.",
+      "item": [
+        {
+          "name": "Create movie",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Test Movie\",\n    \"releaseYear\": 2020,\n    \"duration\": 120\n}"
+            }
+          }
+        },
+        {
+          "name": "List movies",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/movies?page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get movie by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies", "1"]
+            }
+          }
+        },
+        {
+          "name": "Update movie",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies", "1"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Renamed Movie\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete movie",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/1?force=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies", "1"],
+              "query": [
+                { "key": "force", "value": "true" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
