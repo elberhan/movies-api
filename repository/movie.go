@@ -246,9 +246,55 @@ func (r *MovieRepository) Update(id int, m *models.Movie) (*models.Movie, error)
 	return r.GetByID(id)
 }
 
+// Delete removes the movie with the given id. If movie_genres or
+// movie_actors still reference it, the RESTRICT foreign keys make the
+// delete fail, so movies with relationships cannot be removed this way.
 func (r *MovieRepository) Delete(id int) error {
-	// todo
+	result, err := r.db.Exec("DELETE FROM Movie WHERE id = ?", id)
+	if err != nil {
+		return err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return models.ErrNotFound
+	}
 	return nil
+}
+
+// ForceDelete removes all genre and actor links of the movie (not actors/genres 
+// themselves) and then the movie itself. Everything runs in one transaction, so 
+// nothing would be deleted in case of failure.
+func (r *MovieRepository) ForceDelete(id int) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec("DELETE FROM movie_genres WHERE movie_id = ?", id); err != nil {
+		return err
+	}
+	if _, err := tx.Exec("DELETE FROM movie_actors WHERE movie_id = ?", id); err != nil {
+		return err
+	}
+
+	result, err := tx.Exec("DELETE FROM Movie WHERE id = ?", id)
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return models.ErrNotFound
+	}
+
+	return tx.Commit()
 }
 
 func (r *MovieRepository) SetGenres(movieID int, genreIDs []int) error {
