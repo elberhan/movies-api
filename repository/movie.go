@@ -157,9 +157,40 @@ func (r *MovieRepository) GetByYear(year, limit, offset int) (page []*models.Mov
 	return page, totalMovies, nil
 }
 
+// GetByActor fetches one page of the movies the given actor plays in.
+// totalMovies is the total movie count of that actor in the Movie table.
 func (r *MovieRepository) GetByActor(actorID, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
-	// todo
-	return nil
+	rows, err := r.db.Query(
+		`SELECT m.id, m.title, m.releaseYear, m.duration
+		FROM Movie AS m
+		JOIN movie_actors AS ma ON ma.movie_id = m.id
+		WHERE ma.actor_id = ?
+		ORDER BY m.id
+		LIMIT ? OFFSET ?`, actorID, limit, offset)
+
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var m models.Movie
+		if err := rows.Scan(&m.ID, &m.Title, &m.ReleaseYear, &m.Duration); err != nil {
+			return nil, 0, err
+		}
+		page = append(page, &m)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	if err := r.db.QueryRow(
+		"SELECT COUNT(*) FROM movie_actors WHERE actor_id = ?", actorID).Scan(&totalMovies); err != nil {
+		return nil, 0, err
+	}
+
+	return page, totalMovies, nil
 }
 
 func (r *MovieRepository) SearchByTitle(query, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
