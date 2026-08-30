@@ -195,12 +195,12 @@ func (r *MovieRepository) GetByActor(actorID, limit, offset int) (page []*models
 
 func (r *MovieRepository) SearchByTitle(query, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
 	// todo
-	return nil
+	return nil, 0, nil
 }
 
 func (r *MovieRepository) Update(id int, m *models.Movie) (*models.Movie, error) {
 	// todo
-	return nil
+	return nil, nil
 }
 
 func (r *MovieRepository) Delete(id int) error {
@@ -220,10 +220,10 @@ func (r *MovieRepository) SetActors(movieID int, actorIDs []int) error {
 
 func (r *MovieRepository) GetActorsByMovie(movieID int) ([]*models.Actor, error) {
 	// todo
-	return nil
+	return nil, nil
 }
 
 func (r *MovieRepository) GetGenresByMovie(movieID int) ([]*models.Genre, error) {
 	//todo
-	return nil
+	return nil, nil
 }
