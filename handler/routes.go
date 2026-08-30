@@ -22,5 +22,9 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 	actorHandler := NewActorHandler(actorService)
 	actorHandler.RegisterActorRoutes(mux)
 
-	// TODO: Movie
+	// Movie
+	movieRepo := repository.NewMovieRepository(db)
+	movieService := service.NewMovieService(movieRepo)
+	movieHandler := NewMovieHandler(movieService)
+	movieHandler.RegisterMovieRoutes(mux)
 }
