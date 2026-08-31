@@ -62,6 +62,104 @@ func (s *MovieService) Create(title string, releaseYear, duration int, genreIDs,
 	return s.detail(movie.ID)
 }
 
+func (s *MovieService) GetByID(id int) (*models.Movie, error) {
+	if id < 1 {
+		return nil, models.ErrNotFound
+	}
+	return s.repo.GetByID(id)
+}
+
+// GetDetail returns the movie details.
+func (s *MovieService) GetDetail(id int) (*models.MovieDetail, error) {
+	if id < 1 {
+		return nil, models.ErrNotFound
+	}
+	return s.detail(id)
+}
+
+func (s *MovieService) GetAll(page, size int) (*models.Page, error) {
+	page, size = normalizePagination(page, size)
+	movies, total, err := s.repo.GetAll(size, page*size)
+	if err != nil {
+		return nil, err
+	}
+	return newPage(movies, page, size, total), nil
+}
+
+// GetByGenre answers GET /api/movies?genre={id}. An unknown genre gives an
+// empty page, because a filter that matches nothing is not a missing resource.
+func (s *MovieService) GetByGenre(genreID, page, size int) (*models.Page, error) {
+	page, size = normalizePagination(page, size)
+	movies, total, err := s.repo.GetByGenre(genreID, size, page*size)
+	if err != nil {
+		return nil, err
+	}
+	return newPage(movies, page, size, total), nil
+}
+
+func (s *MovieService) GetByYear(year, page, size int) (*models.Page, error) {
+	page, size = normalizePagination(page, size)
+	movies, total, err := s.repo.GetByYear(year, size, page*size)
+	if err != nil {
+		return nil, err
+	}
+	return newPage(movies, page, size, total), nil
+}
+
+func (s *MovieService) GetByActor(actorID, page, size int) (*models.Page, error) {
+	page, size = normalizePagination(page, size)
+	movies, total, err := s.repo.GetByActor(actorID, size, page*size)
+	if err != nil {
+		return nil, err
+	}
+	return newPage(movies, page, size, total), nil
+}
+
+// SearchByTitle answers GET /api/movies/search?title=. The match is partial
+// and case-insensitive.
+func (s *MovieService) SearchByTitle(query string, page, size int) (*models.Page, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, fmt.Errorf("%w: query parameter 'title' is required", models.ErrInvalidInput)
+	}
+
+	page, size = normalizePagination(page, size)
+	movies, total, err := s.repo.SearchByTitle(query, size, page*size)
+	if err != nil {
+		return nil, err
+	}
+	return newPage(movies, page, size, total), nil
+}
+
+// ActorsInMovie answers GET /api/movies/{id}/actors.
+func (s *MovieService) ActorsInMovie(id, page, size int) (*models.Page, error) {
+	if _, err := s.GetByID(id); err != nil {
+		return nil, err
+	}
+
+	page, size = normalizePagination(page, size)
+	actors, total, err := s.repo.GetActorsByMovie(id, size, page*size)
+	if err != nil {
+		return nil, err
+	}
+	return newPage(actors, page, size, total), nil
+}
+
+// GenresInMovie answers GET /api/movies/{id}/genres.
+func (s *MovieService) GenresInMovie(id, page, size int) (*models.Page, error) {
+	if _, err := s.GetByID(id); err != nil {
+		return nil, err
+	}
+
+	page, size = normalizePagination(page, size)
+	genres, total, err := s.repo.GetGenresByMovie(id, size, page*size)
+	if err != nil {
+		return nil, err
+	}
+	return newPage(genres, page, size, total), nil
+}
+
+
 // detail returns movie with its complete genre and actor lists.
 func (s *MovieService) detail(id int) (*models.MovieDetail, error) {
 	movie, err := s.repo.GetByID(id)
@@ -132,3 +230,13 @@ func validateDuration(duration int) error {
 	return nil
 }
 
+// newPage wraps raw repository data into the uniform models.Page JSON struct
+func newPage[T any](items []*T, page, size, total int) *models.Page {
+	return &models.Page{
+		Content:       toAnySlice(items),
+		Page:          page,
+		Size:          size,
+		TotalElements: total,
+		TotalPages:    totalPages(total, size),
+	}
+}
