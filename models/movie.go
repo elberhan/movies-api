@@ -12,3 +12,10 @@ type MovieDetail struct {
 	Genres []*Genre `json:"genres"`
 	Actors []*Actor `json:"actors"`
 }
+
+type MovieFilter struct {
+	GenreID *int
+	ActorID *int
+	Year    *int
+	Title   string
+}
