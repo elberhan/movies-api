@@ -36,7 +36,11 @@ func (s *ActorService) GetByID(id int) (*models.Actor, error) {
 }
 
 func (s *ActorService) GetAll(page, size int) (*models.Page, error) {
-	page, size = normalizePagination(page, size)
+	page, size, err := validatePagination(page, size)
+	if err != nil {
+		return nil, err
+	}
+
 	actors, total, err := s.actorRepo.GetAll(size, page*size)
 	if err != nil {
 		return nil, err
@@ -52,7 +56,11 @@ func (s *ActorService) GetAll(page, size int) (*models.Page, error) {
 }
 
 func (s *ActorService) GetByName(name string, page, size int) (*models.Page, error) {
-	page, size = normalizePagination(page, size)
+	page, size, err := validatePagination(page, size)
+	if err != nil {
+		return nil, err
+	}
+
 	actors, err := s.actorRepo.GetByName(name, size, page*size)
 	if err != nil {
 		return nil, err
