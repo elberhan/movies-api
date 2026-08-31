@@ -17,13 +17,18 @@ func NewMovieRepository(db *sql.DB) *MovieRepository {
 	return &MovieRepository{db: db}
 }
 
-// Create creates a new record in the Movie table, returning *models.Movie (pointer to the
-// [models.Movie] object) and nil, or nil pointer and error.
-func (r *MovieRepository) Create(title string, releaseYear int, duration int) (*models.Movie, error) {
-	result, err := r.db.Exec(
+// Create inserts a new movie together with its genre and actor links, in one
+// transaction. A failure halfway changes nothing.
+func (r *MovieRepository) Create(title string, releaseYear int, duration int, genreIDs, actorIDs []int) (*models.Movie, error) {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	result, err := tx.Exec(
 		`INSERT INTO Movie (title, releaseYear, duration) VALUES (?, ?, ?)`,
 		title, releaseYear, duration)
-
 	if err != nil {
 		return nil, err
 	}
@@ -32,9 +37,21 @@ func (r *MovieRepository) Create(title string, releaseYear int, duration int) (*
 	if err != nil {
 		return nil, err
 	}
+	movieID := int(id)
+
+	if err := setGenresTx(tx, movieID, genreIDs); err != nil {
+		return nil, err
+	}
+	if err := setActorsTx(tx, movieID, actorIDs); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
 
 	return &models.Movie{
-		ID:          int(id),
+		ID:          movieID,
 		Title:       title,
 		ReleaseYear: releaseYear,
 		Duration:    duration,
@@ -394,44 +411,6 @@ func (r *MovieRepository) ForceDelete(id int) error {
 	return tx.Commit()
 }
 
-// SetGenres makes genreIDs the new genre list of the movie, in one transaction.
-// An empty genreIDs is an error.
-func (r *MovieRepository) SetGenres(movieID int, genreIDs []int) error {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	if err := ensureMovieExists(tx, movieID); err != nil {
-		return err
-	}
-	if err := setGenresTx(tx, movieID, genreIDs); err != nil {
-		return err
-	}
-
-	return tx.Commit()
-}
-
-// SetActors makes actorIDs the new actor list of the movie, in one transaction.
-// An empty actorIDs is an error: a movie must keep a minimum of one actor.
-func (r *MovieRepository) SetActors(movieID int, actorIDs []int) error {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	if err := ensureMovieExists(tx, movieID); err != nil {
-		return err
-	}
-	if err := setActorsTx(tx, movieID, actorIDs); err != nil {
-		return err
-	}
-
-	return tx.Commit()
-}
-
 // setGenresTx replaces the genre links of the movie inside the caller's
 // transaction, so that it can share one commit with other writes.
 func setGenresTx(tx *sql.Tx, movieID int, genreIDs []int) error {
@@ -492,14 +471,4 @@ func setActorsTx(tx *sql.Tx, movieID int, actorIDs []int) error {
 	}
 
 	return nil
-}
-
-// ensureMovieExists returns ErrNotFound if the movie is not in the database.
-func ensureMovieExists(tx *sql.Tx, movieID int) error {
-	var exists int
-	err := tx.QueryRow("SELECT 1 FROM Movie WHERE id = ?", movieID).Scan(&exists)
-	if errors.Is(err, sql.ErrNoRows) {
-		return models.ErrNotFound
-	}
-	return err
 }

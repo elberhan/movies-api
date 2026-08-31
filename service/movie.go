@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"unicode/utf8"
@@ -47,16 +46,9 @@ func (s *MovieService) Create(title string, releaseYear, duration int, genreIDs,
 		return nil, fmt.Errorf("%w: field 'actors' needs a minimum of one actor id", models.ErrInvalidInput)
 	}
 
-	movie, err := s.repo.Create(title, releaseYear, duration)
+	movie, err := s.repo.Create(title, releaseYear, duration, genreIDs, actorIDs)
 	if err != nil {
 		return nil, err
-	}
-
-	if err := s.repo.SetGenres(movie.ID, genreIDs); err != nil {
-		return nil, s.discardMovie(movie.ID, err)
-	}
-	if err := s.repo.SetActors(movie.ID, actorIDs); err != nil {
-		return nil, s.discardMovie(movie.ID, err)
 	}
 
 	return s.detail(movie.ID)
@@ -262,15 +254,6 @@ func (s *MovieService) relationCounts(id int) (genres, actors int, err error) {
 		return 0, 0, err
 	}
 	return genres, actors, nil
-}
-
-// discardMovie removes a movie whose links failed, so that a failed Create
-// leaves no row behind. It returns cause, or cause together with the delete error.
-func (s *MovieService) discardMovie(movieID int, cause error) error {
-	if err := s.repo.ForceDelete(movieID); err != nil {
-		return errors.Join(cause, err)
-	}
-	return cause
 }
 
 //helpers
