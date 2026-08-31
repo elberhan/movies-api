@@ -159,6 +159,70 @@ func (s *MovieService) GenresInMovie(id, page, size int) (*models.Page, error) {
 	return newPage(genres, page, size, total), nil
 }
 
+// UpdatePartial applies a PATCH: only provided fields are changed.
+func (s *MovieService) UpdatePartial(id int, title *string, releaseYear, duration *int, genreIDs, actorIDs []int) (*models.MovieDetail, error) {
+	movie, err := s.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	updated := *movie // the copy keeps the fields the request does not carry
+	if title != nil {
+		if updated.Title, err = validateTitle(*title); err != nil {
+			return nil, err
+		}
+	}
+	if releaseYear != nil {
+		if err := validateReleaseYear(*releaseYear); err != nil {
+			return nil, err
+		}
+		updated.ReleaseYear = *releaseYear
+	}
+	if duration != nil {
+		if err := validateDuration(*duration); err != nil {
+			return nil, err
+		}
+		updated.Duration = *duration
+	}
+
+	// reject an empty list here, so that a bad request never opens a transaction
+	if genreIDs != nil && len(genreIDs) == 0 {
+		return nil, fmt.Errorf("%w: field 'genres' needs a minimum of one genre id", models.ErrInvalidInput)
+	}
+	if actorIDs != nil && len(actorIDs) == 0 {
+		return nil, fmt.Errorf("%w: field 'actors' needs a minimum of one actor id", models.ErrInvalidInput)
+	}
+
+	if _, err := s.repo.Update(id, &updated, genreIDs, actorIDs); err != nil {
+		return nil, err
+	}
+
+	return s.detail(id)
+}
+
+// Delete removes a movie. A movie with genres or actors is removed only with
+// force, which drops the links first.
+func (s *MovieService) Delete(id int, force bool) error {
+	movie, err := s.GetByID(id)
+	if err != nil {
+		return err
+	}
+
+	genres, actors, err := s.relationCounts(id)
+	if err != nil {
+		return err
+	}
+
+	if genres+actors > 0 && !force {
+		return fmt.Errorf("%w: cannot delete movie '%s' because it has %d genres and %d actors associated",
+			models.ErrHasRelations, movie.Title, genres, actors)
+	}
+
+	if force {
+		return s.repo.ForceDelete(id)
+	}
+	return s.repo.Delete(id)
+}
 
 // detail returns movie with its complete genre and actor lists.
 func (s *MovieService) detail(id int) (*models.MovieDetail, error) {
@@ -186,6 +250,18 @@ func (s *MovieService) detail(id int) (*models.MovieDetail, error) {
 	}
 
 	return &models.MovieDetail{Movie: *movie, Genres: genres, Actors: actors}, nil
+}
+
+// relationCounts reports how many genres and actors the movie links to. The
+// repository gives a total only next to a page of rows, so it asks for one row.
+func (s *MovieService) relationCounts(id int) (genres, actors int, err error) {
+	if _, genres, err = s.repo.GetGenresByMovie(id, 1, 0); err != nil {
+		return 0, 0, err
+	}
+	if _, actors, err = s.repo.GetActorsByMovie(id, 1, 0); err != nil {
+		return 0, 0, err
+	}
+	return genres, actors, nil
 }
 
 // discardMovie removes a movie whose links failed, so that a failed Create
