@@ -96,6 +96,7 @@ INSERT INTO movie_genres (movie_id, genre_id) VALUES
     (4, 4),
     (5, 8),
     (5, 6),
+    (5, 5),
     (5, 3),
     (6, 1),
     (6, 7),
