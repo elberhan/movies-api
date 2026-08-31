@@ -42,8 +42,11 @@ func (h *ActorHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ActorHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	page := queryInt(r, "page", 0)
-	size := queryInt(r, "size", 0)
+	page, size, err := pageParams(r)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
 
 	if name := r.URL.Query().Get("name"); name != "" {
 		result, err := h.service.GetByName(name, page, size)

@@ -2,9 +2,7 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
-	"gitea.kood.tech/nikolailetshev/movies-api/models"
 	"gitea.kood.tech/nikolailetshev/movies-api/service"
 )
 
@@ -25,7 +23,6 @@ func (h *GenreHandler) RegisterGenreRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/genres/{id}", h.Delete) // delete (?force=)  -> 204
 }
 
-
 func (h *GenreHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name string `json:"name"`
@@ -44,8 +41,11 @@ func (h *GenreHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *GenreHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	page := queryInt(r, "page", 0)
-	size := queryInt(r, "size", 0)
+	page, size, err := pageParams(r)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
 
 	result, err := h.service.GetAll(page, size)
 	if err != nil {
@@ -106,26 +106,4 @@ func (h *GenreHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-//helpers
-func pathID(r *http.Request) (int, error) {
-	id, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil || id < 1 {
-		return 0, models.ErrNotFound
-	}
-	return id, nil
-}
-
-
-func queryInt(r *http.Request, key string, fallback int) int {
-	raw := r.URL.Query().Get(key)
-	if raw == "" {
-		return fallback // param absent entirely
-	}
-	v, err := strconv.Atoi(raw)
-	if err != nil {
-		return fallback // param present but nonsense
-	}
-	return v
 }
