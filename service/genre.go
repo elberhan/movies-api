@@ -38,7 +38,11 @@ func (s *GenreService) GetByID(id int) (*models.Genre, error) {
 }
 
 func (s *GenreService) GetAll(page, size int) (*models.Page, error) {
-	page, size = normalizePagination(page, size)
+	page, size, err := validatePagination(page, size)
+	if err != nil {
+		return nil, err
+	}
+
 	genres, total, err := s.repo.GetAll(size, page*size)
 	if err != nil {
 		return nil, err
@@ -94,7 +98,10 @@ func (s *GenreService) MoviesInGenre(id, page, size int) ([]*models.Movie, error
 	if _, err := s.GetByID(id); err != nil {
 		return nil, err
 	}
-	page, size = normalizePagination(page, size)
+	page, size, err := validatePagination(page, size)
+	if err != nil {
+		return nil, err
+	}
 	return s.repo.GetMoviesByGenre(id, size, page*size)
 }
 
@@ -111,17 +118,18 @@ func validateName(name string) (string, error) {
 	return name, nil
 }
 
-func normalizePagination(page, size int) (int, int) {
+func validatePagination(page, size int) (int, int, error) {
 	if page < 0 {
-		page = 0
+		return 0, 0, fmt.Errorf("%w: query parameter 'page' must be 0 or greater", models.ErrInvalidInput)
 	}
-	switch {
-	case size < 1:
+	if size < 0 || size > maxPageSize {
+		return 0, 0, fmt.Errorf("%w: query parameter 'size' must be between 1 and %d",
+			models.ErrInvalidInput, maxPageSize)
+	}
+	if size == 0 {
 		size = defaultPageSize
-	case size > maxPageSize:
-		size = maxPageSize
 	}
-	return page, size
+	return page, size, nil
 }
 
 func totalPages(total, size int) int {

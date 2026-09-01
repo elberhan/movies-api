@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"gitea.kood.tech/nikolailetshev/movies-api/models"
 )
@@ -77,21 +78,48 @@ func (r *MovieRepository) GetByID(id int) (*models.Movie, error) {
 	return &m, nil
 }
 
-// GetAll fetches one page of movies: limit rows, starting after offset rows.
-// totalRows is the total row count in the Movie table.
-func (r *MovieRepository) GetAll(limit, offset int) (page []*models.Movie, totalRows int, err error) {
-	rows, err := r.db.Query(
-		`SELECT id, title, releaseYear, duration FROM Movie 
-        ORDER BY id 
-        LIMIT ? OFFSET ?`, limit, offset)
-	if err != nil {
+func (r *MovieRepository) Find(f models.MovieFilter, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
+	var joins, conditions []string
+	var args []any
+
+	if f.GenreID != nil {
+		joins = append(joins, "JOIN movie_genres AS mg ON mg.movie_id = m.id AND mg.genre_id = ?")
+		args = append(args, *f.GenreID)
+	}
+	if f.ActorID != nil {
+		joins = append(joins, "JOIN movie_actors AS ma ON ma.movie_id = m.id AND ma.actor_id = ?")
+		args = append(args, *f.ActorID)
+	}
+	if f.Year != nil {
+		conditions = append(conditions, "m.releaseYear = ?")
+		args = append(args, *f.Year)
+	}
+	if f.Title != "" {
+		conditions = append(conditions, `m.title LIKE '%' || ? || '%'`)
+		args = append(args, f.Title)
+	}
+
+	source := "FROM Movie AS m " + strings.Join(joins, " ")
+	if len(conditions) > 0 {
+		source += " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	if err := r.db.QueryRow("SELECT COUNT(*) "+source, args...).Scan(&totalMovies); err != nil {
 		return nil, 0, err
 	}
 
+	pageArgs := append(append([]any{}, args...), limit, offset)
+	rows, err := r.db.Query(
+		"SELECT m.id, m.title, m.releaseYear, m.duration "+source+" ORDER BY m.id LIMIT ? OFFSET ?",
+		pageArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
 	for rows.Next() {
 		var m models.Movie
-		err := rows.Scan(&m.ID, &m.Title, &m.ReleaseYear, &m.Duration)
-		if err != nil {
+		if err := rows.Scan(&m.ID, &m.Title, &m.ReleaseYear, &m.Duration); err != nil {
 			return nil, 0, err
 		}
 		page = append(page, &m)
@@ -101,117 +129,31 @@ func (r *MovieRepository) GetAll(limit, offset int) (page []*models.Movie, total
 		return nil, 0, err
 	}
 
-	if err := r.db.QueryRow("SELECT COUNT(*) FROM Movie").Scan(&totalRows); err != nil {
-		return nil, 0, err
-	}
+	return page, totalMovies, nil
+}
 
-	return page, totalRows, nil
+// GetAll fetches one page of movies: limit rows, starting after offset rows.
+// totalRows is the total row count in the Movie table.
+func (r *MovieRepository) GetAll(limit, offset int) (page []*models.Movie, totalRows int, err error) {
+	return r.Find(models.MovieFilter{}, limit, offset)
 }
 
 // GetByGenre fetches one page of the movies that belongs to the given genre.
 // totalRows is the total movie count of specified genre in the Movie table.
 func (r *MovieRepository) GetByGenre(genreID, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
-	rows, err := r.db.Query(
-		`SELECT m.id, m.title, m.releaseYear, m.duration
-		FROM Movie AS m
-		JOIN movie_genres AS mg ON mg.movie_id = m.id
-		WHERE mg.genre_id = ?
-		ORDER BY m.id
-		LIMIT ? OFFSET ?`, genreID, limit, offset)
-
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var m models.Movie
-		if err := rows.Scan(&m.ID, &m.Title, &m.ReleaseYear, &m.Duration); err != nil {
-			return nil, 0, err
-		}
-		page = append(page, &m)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, 0, err
-	}
-
-	// get the number of total movies of specified genre
-	if err := r.db.QueryRow(
-		"SELECT COUNT(*) FROM movie_genres WHERE genre_id = ?", genreID).Scan(&totalMovies); err != nil {
-		return nil, 0, err
-	}
-
-	return page, totalMovies, nil
+	return r.Find(models.MovieFilter{GenreID: &genreID}, limit, offset)
 }
 
 // GetByYear fetches one page of movies released in the given year.
 // totalMovies is the count of all movies released in the given year.
 func (r *MovieRepository) GetByYear(year, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
-	rows, err := r.db.Query(
-		`SELECT id, title, releaseYear, duration FROM Movie
-		WHERE releaseYear = ?
-		ORDER BY id
-		LIMIT ? OFFSET ?`, year, limit, offset)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var m models.Movie
-		if err := rows.Scan(&m.ID, &m.Title, &m.ReleaseYear, &m.Duration); err != nil {
-			return nil, 0, err
-		}
-		page = append(page, &m)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, 0, err
-	}
-
-	if err := r.db.QueryRow(
-		"SELECT COUNT(*) FROM Movie WHERE releaseYear = ?", year).Scan(&totalMovies); err != nil {
-		return nil, 0, err
-	}
-
-	return page, totalMovies, nil
+	return r.Find(models.MovieFilter{Year: &year}, limit, offset)
 }
 
 // GetByActor fetches one page of the movies the given actor plays in.
 // totalMovies is the total movie count of that actor in the Movie table.
 func (r *MovieRepository) GetByActor(actorID, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
-	rows, err := r.db.Query(
-		`SELECT m.id, m.title, m.releaseYear, m.duration
-		FROM Movie AS m
-		JOIN movie_actors AS ma ON ma.movie_id = m.id
-		WHERE ma.actor_id = ?
-		ORDER BY m.id
-		LIMIT ? OFFSET ?`, actorID, limit, offset)
-
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var m models.Movie
-		if err := rows.Scan(&m.ID, &m.Title, &m.ReleaseYear, &m.Duration); err != nil {
-			return nil, 0, err
-		}
-		page = append(page, &m)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, 0, err
-	}
-
-	if err := r.db.QueryRow(
-		"SELECT COUNT(*) FROM movie_actors WHERE actor_id = ?", actorID).Scan(&totalMovies); err != nil {
-		return nil, 0, err
-	}
-
-	return page, totalMovies, nil
+	return r.Find(models.MovieFilter{ActorID: &actorID}, limit, offset)
 }
 
 // GetActorsByMovie fetches one page of the actors starring in the given movie.
@@ -287,34 +229,7 @@ func (r *MovieRepository) GetGenresByMovie(movieID, limit, offset int) (genres [
 // SearchByTitle fetches one page of movies whose title contains the query,
 // case-insensitively. totalMovies is the total count of matching movies.
 func (r *MovieRepository) SearchByTitle(query string, limit, offset int) (page []*models.Movie, totalMovies int, err error) {
-	rows, err := r.db.Query(
-		`SELECT id, title, releaseYear, duration FROM Movie
-		WHERE title LIKE '%' || ? || '%'
-		ORDER BY id
-		LIMIT ? OFFSET ?`, query, limit, offset)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var m models.Movie
-		if err := rows.Scan(&m.ID, &m.Title, &m.ReleaseYear, &m.Duration); err != nil {
-			return nil, 0, err
-		}
-		page = append(page, &m)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, 0, err
-	}
-
-	if err := r.db.QueryRow(
-		"SELECT COUNT(*) FROM Movie WHERE title LIKE '%' || ? || '%'", query).Scan(&totalMovies); err != nil {
-		return nil, 0, err
-	}
-
-	return page, totalMovies, nil
+	return r.Find(models.MovieFilter{Title: query}, limit, offset)
 }
 
 // Update replaces the title, releaseYear and duration of the movie with the
