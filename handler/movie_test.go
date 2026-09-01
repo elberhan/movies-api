@@ -118,10 +118,10 @@ func TestMovieCreateHandler(t *testing.T) {
 	}
 
 	var movie struct {
-		ID          int            `json:"id"`
-		Title       string         `json:"title"`
-		ReleaseYear int            `json:"releaseYear"`
-		Duration    int            `json:"duration"`
+		ID          int                     `json:"id"`
+		Title       string                  `json:"title"`
+		ReleaseYear int                     `json:"releaseYear"`
+		Duration    int                     `json:"duration"`
 		Genres      []struct{ Name string } `json:"genres"`
 		Actors      []struct{ Name string } `json:"actors"`
 	}
@@ -262,7 +262,7 @@ func TestMovieGetCastAndGenres(t *testing.T) {
 	}
 	var actors struct {
 		Content       []struct{ Name string } `json:"content"`
-		TotalElements int                      `json:"totalElements"`
+		TotalElements int                     `json:"totalElements"`
 	}
 	json.Unmarshal(recActors.Body.Bytes(), &actors)
 	if actors.TotalElements != 1 || actors.Content[0].Name != "Leonardo DiCaprio" {
@@ -275,7 +275,7 @@ func TestMovieGetCastAndGenres(t *testing.T) {
 	}
 	var genres struct {
 		Content       []struct{ Name string } `json:"content"`
-		TotalElements int                      `json:"totalElements"`
+		TotalElements int                     `json:"totalElements"`
 	}
 	json.Unmarshal(recGenres.Body.Bytes(), &genres)
 	if genres.TotalElements != 1 || genres.Content[0].Name != "Sci-Fi" {

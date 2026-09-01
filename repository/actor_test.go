@@ -200,3 +200,59 @@ func TestActorMovieCountAndLinks(t *testing.T) {
 		t.Fatalf("expected 0 links after cleanup, got %d", count)
 	}
 }
+
+func TestActorSetMovies(t *testing.T) {
+	db := newTestDB(t)
+	actorRepo := NewActorRepository(db)
+
+	actor, err := actorRepo.Create("Tom Hanks", "1956-07-09")
+	if err != nil {
+		t.Fatalf("create actor: %v", err)
+	}
+
+	// movies are inserted directly; the Movie row is all a link needs
+	for _, title := range []string{"Cast Away", "The Terminal"} {
+		if _, err := db.Exec("INSERT INTO Movie (title, releaseYear, duration) VALUES (?, ?, ?)",
+			title, 2000, 143); err != nil {
+			t.Fatalf("insert movie %s: %v", title, err)
+		}
+	}
+
+	if err := actorRepo.SetMovies(actor.ID, []int{1, 2}); err != nil {
+		t.Fatalf("set movies: %v", err)
+	}
+
+	movies, err := actorRepo.GetMoviesByActor(actor.ID)
+	if err != nil {
+		t.Fatalf("get movies by actor: %v", err)
+	}
+	if len(movies) != 2 || movies[0].Title != "Cast Away" || movies[1].Title != "The Terminal" {
+		t.Fatalf("expected both movies by title, got %+v", movies)
+	}
+
+	// replacing with a smaller set must remove the others
+	if err := actorRepo.SetMovies(actor.ID, []int{2}); err != nil {
+		t.Fatalf("set movies (replace): %v", err)
+	}
+	movies, _ = actorRepo.GetMoviesByActor(actor.ID)
+	if len(movies) != 1 || movies[0].Title != "The Terminal" {
+		t.Fatalf("expected only The Terminal, got %+v", movies)
+	}
+
+	// an unknown movie id must fail and change nothing (transaction rolls back)
+	if err := actorRepo.SetMovies(actor.ID, []int{1, 999}); !errors.Is(err, models.ErrInvalidInput) {
+		t.Fatalf("expected ErrInvalidInput, got %v", err)
+	}
+	movies, _ = actorRepo.GetMoviesByActor(actor.ID)
+	if len(movies) != 1 {
+		t.Fatalf("expected the replace to be rolled back, got %+v", movies)
+	}
+
+	// an empty list removes every link
+	if err := actorRepo.SetMovies(actor.ID, []int{}); err != nil {
+		t.Fatalf("set movies (empty): %v", err)
+	}
+	if count, _ := actorRepo.MovieCount(actor.ID); count != 0 {
+		t.Fatalf("expected 0 links, got %d", count)
+	}
+}
