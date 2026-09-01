@@ -16,7 +16,12 @@ A RESTful API for managing a movie database — **movies**, their **genres**, an
 
 ## Setup and installation instructions
 
-**Prerequisites:** Go 1.26+.
+**Prerequisites:**
+
+- Go 1.26+
+- gcc compiler present within your PATH (for go-sqlite3)
+
+**Installation:**
 
 ```bash
 git clone git@gitea.kood.tech:nikolailetshev/movies-api.git
@@ -45,44 +50,52 @@ All endpoints use the `/api` prefix and JSON. Endpoints returning many items (fo
 
 ### Genres
 
-| Method & path | Description |
-|---|---|
-| `POST /api/genres` | Create `{ "name": "Action" }` → `201` |
-| `GET /api/genres` | List (paginated) → `200` |
-| `GET /api/genres/{id}` | Get one → `200` / `404` |
-| `PATCH /api/genres/{id}` | Rename → `200` |
-| `DELETE /api/genres/{id}` | Delete → `204`. Blocked (`400`) if it has movies unless `?force=true` |
+| Method & path             | Description                                                                                                              | Response codes      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------- |
+| `POST /api/genres`        | Adds a new genre. Send `{ "name": "Action" }`.                                                                           | `201`, `400`        |
+| `GET /api/genres`         | Gives one page of all genres.                                                                                            | `200`, `400`        |
+| `GET /api/genres/{id}`    | Gives one genre by its id.                                                                                               | `200`, `404`        |
+| `PATCH /api/genres/{id}`  | Changes the name of one genre.                                                                                           | `200`, `400`, `404` |
+| `DELETE /api/genres/{id}` | Removes one genre. The request fails if the genre has movies. Add `?force=true` to remove the genre and its movie links. | `204`, `400`, `404` |
 
 ### Movies
 
 Created together with genre and actor IDs (`duration` in seconds; minimum of 1 genre and 1 actor required):
 
 ```json
-{ "title": "Inception", "releaseYear": 2010, "duration": 8880, "genres": [1, 9, 11], "actors": [5, 12, 8] }
+{
+  "title": "Inception",
+  "releaseYear": 2010,
+  "duration": 8880,
+  "genres": [1, 9, 11],
+  "actors": [5, 12, 8]
+}
 ```
 
-| Method & path | Description |
-|---|---|
-| `POST /api/movies` | Create → `201` (returns movie + full genre/actor lists) |
-| `GET /api/movies` | List/filter by `genre`, `year`, `actor`, `title` → `200` |
-| `GET /api/movies/{id}` | Get one with its genres & actors → `200` / `404` |
-| `GET /api/movies/{id}/actors` | Movie's cast (paginated) → `200` |
-| `GET /api/movies/{id}/genres` | Movie's genres (paginated) → `200` |
-| `GET /api/movies/search?title=matrix` | Partial, case-insensitive title search → `200` |
-| `PATCH /api/movies/{id}` | Update fields; pass `genres`/`actors` arrays to replace links → `200` |
-| `DELETE /api/movies/{id}` | Delete → `204`. Blocked (`400`) if linked unless `?force=true` |
+| Method & path                         | Description                                                                                                                  | Response codes      |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| `POST /api/movies`                    | Adds a new movie and links it to the given genres and actors. Gives back the movie with its full genre and actor lists.      | `201`, `400`        |
+| `GET /api/movies`                     | Gives one page of movies. Use `genre`, `year`, `actor` and `title` to make the list smaller.                                 | `200`, `400`        |
+| `GET /api/movies/{id}`                | Gives one movie with its full genre and actor lists.                                                                         | `200`, `404`        |
+| `GET /api/movies/{id}/actors`         | Gives one page of the actors in that movie.                                                                                  | `200`, `400`, `404` |
+| `GET /api/movies/{id}/genres`         | Gives one page of the genres of that movie.                                                                                  | `200`, `400`, `404` |
+| `GET /api/movies/search?title=matrix` | Finds the movies whose title contains the text. Letter case is not important. The `title` parameter is necessary.            | `200`, `400`        |
+| `PATCH /api/movies/{id}`              | Changes only the fields that you send. A `genres` or `actors` list replaces the old links.                                   | `200`, `400`, `404` |
+| `DELETE /api/movies/{id}`             | Removes one movie. The request fails if the movie has genres or actors. Add `?force=true` to remove the movie and its links. | `204`, `400`, `404` |
 
 ### Actors
 
 `birthDate` uses ISO 8601 (`YYYY-MM-DD`).
 
-| Method & path | Description |
-|---|---|
-| `POST /api/actors` | Create `{ "name": "Wang Yibo", "birthDate": "1997-08-05" }` → `201` |
-| `GET /api/actors` | List (paginated); filter by `?name=` (partial, case-insensitive) → `200` |
-| `GET /api/actors/{id}` | Get one → `200` / `404` |
-| `PATCH /api/actors/{id}` | Update `name` / `birthDate` → `200` |
-| `DELETE /api/actors/{id}` | Delete → `204`. Blocked (`400`) if cast in movies unless `?force=true` |
+| Method & path             | Description                                                                                                                  | Response codes      |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| `POST /api/actors`        | Adds a new actor. Send `{ "name": "Wang Yibo", "birthDate": "1997-08-05" }`.                                                 | `201`, `400`        |
+| `GET /api/actors`         | Gives one page of all actors. Use `?name=` to find actors by a part of the name. Letter case is not important.               | `200`, `400`        |
+| `GET /api/actors/{id}`    | Gives one actor by their id.                                                                                                 | `200`, `404`        |
+| `PATCH /api/actors/{id}`  | Changes the `name` or the `birthDate` of one actor.                                                                          | `200`, `400`, `404` |
+| `DELETE /api/actors/{id}` | Removes one actor. The request fails if the actor is in movies. Add `?force=true` to remove the actor and their movie links. | `204`, `400`, `404` |
+
+Any endpoint can answer `500` if the server fails. A bad `page` or `size` value gives `400` on every list endpoint.
 
 ## Error handling
 
@@ -92,11 +105,11 @@ Errors use sentinel values in `models/errors.go`, mapped to HTTP statuses in `ha
 { "error": "resource not found" }
 ```
 
-| Sentinel | HTTP |
-|---|---|
-| `ErrNotFound` | `404 Not Found` |
-| `ErrInvalidInput` / `ErrHasRelations` | `400 Bad Request` |
-| anything else | `500 Internal Server Error` |
+| Sentinel                              | HTTP                        |
+| ------------------------------------- | --------------------------- |
+| `ErrNotFound`                         | `404 Not Found`             |
+| `ErrInvalidInput` / `ErrHasRelations` | `400 Bad Request`           |
+| anything else                         | `500 Internal Server Error` |
 
 ## Architecture
 
@@ -119,3 +132,13 @@ make build       # or: go build ./...
 ```
 
 Unit tests cover the repository and handler layers (`repository/actor_test.go`, `handler/actor_test.go`).
+
+# Bonus features
+
+- Makefile used to simplify life of a developer. You can run multiple commands using plain English verbs (see Makefile)
+- git hook used to format and vet staged go files (improves code quality and formatting, wouldn't allow you commit suspicious code)
+- Implemented case-insensitive search functionality with partial match for movies endpoint
+- Pagination implemented for every endpoint that returns multiple entities
+- Implemented thorough error handling and input validation
+- User can set custom port when launching the server: `go run ./... -port 8090`
+- User can filter out movie listing with query parameters, which **order does not matter**: `http://localhost:8080/api/movies?genre=8&year=2020&page=0` and `http://localhost:8080/api/movies?page=0&year=2020&genre=8` returns the same thing.
