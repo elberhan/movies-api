@@ -14,14 +14,14 @@ A RESTful API for managing a movie database — **movies**, their **genres**, an
 - Input validation and consistent JSON error handling
 - Immutable IDs enforced by DB triggers
 
-## Quickstart
+## Setup and installation instructions
 
 **Prerequisites:** Go 1.26+.
 
 ```bash
-git clone git@github.com:Eyob-L/movies-api.git
+git clone git@gitea.kood.tech:nikolailetshev/movies-api.git
 cd movies-api
-make hook        # install pre-commit hook (once)
+make hook        # install pre-commit hook (once, for dev team)
 make run         # or: go run ./...
 ```
 
@@ -29,13 +29,13 @@ The server starts on `http://localhost:8080` and creates `movies.db` in the proj
 
 **Load sample data** (40 actors, 12 genres, 21 movies): `make init` or `go run ./... -init`.
 
-> Warning: `-init` wipes all existing rows before seeding.
+> Warning: `-init` wipes all existing rows before seeding!
 
 **Custom port:** `go run ./... -port 8765` (must be 1025–65535).
 
-## API reference
+## API reference (usage guide)
 
-All endpoints use the `/api` prefix and JSON. List endpoints return a pagination envelope:
+All endpoints use the `/api` prefix and JSON. Endpoints returning many items (for example GET /api/movies) are wrappen in a pagination:
 
 ```json
 { "content": [ ... ], "page": 0, "size": 10, "totalElements": 21, "totalPages": 3 }
@@ -55,7 +55,7 @@ All endpoints use the `/api` prefix and JSON. List endpoints return a pagination
 
 ### Movies
 
-Created together with genre and actor IDs (`duration` in seconds; ≥1 genre and ≥1 actor required):
+Created together with genre and actor IDs (`duration` in seconds; minimum of 1 genre and 1 actor required):
 
 ```json
 { "title": "Inception", "releaseYear": 2010, "duration": 8880, "genres": [1, 9, 11], "actors": [5, 12, 8] }
@@ -78,7 +78,7 @@ Created together with genre and actor IDs (`duration` in seconds; ≥1 genre and
 
 | Method & path | Description |
 |---|---|
-| `POST /api/actors` | Create `{ "name": "Keanu Reeves", "birthDate": "1964-09-02" }` → `201` |
+| `POST /api/actors` | Create `{ "name": "Wang Yibo", "birthDate": "1997-08-05" }` → `201` |
 | `GET /api/actors` | List (paginated); filter by `?name=` (partial, case-insensitive) → `200` |
 | `GET /api/actors/{id}` | Get one → `200` / `404` |
 | `PATCH /api/actors/{id}` | Update `name` / `birthDate` → `200` |
