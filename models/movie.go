@@ -6,3 +6,9 @@ type Movie struct {
 	ReleaseYear int    `json:"releaseYear"`
 	Duration    int    `json:"duration"`
 }
+
+type MovieDetail struct {
+	Movie
+	Genres []*Genre `json:"genres"`
+	Actors []*Actor `json:"actors"`
+}
