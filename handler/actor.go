@@ -91,13 +91,14 @@ func (h *ActorHandler) Update(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name      *string `json:"name"`
 		BirthDate *string `json:"birthDate"`
+		Movies    []int   `json:"movies"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		writeError(w, err)
 		return
 	}
 
-	actor, err := h.service.UpdatePartial(id, req.Name, req.BirthDate)
+	actor, err := h.service.UpdatePartial(id, req.Name, req.BirthDate, req.Movies)
 	if err != nil {
 		writeError(w, err)
 		return

@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"gitea.kood.tech/nikolailetshev/movies-api/models"
 )
@@ -159,4 +160,39 @@ func (r *ActorRepository) GetMoviesByActor(actorID int) ([]*models.Movie, error)
 func (r *ActorRepository) DeleteActorMovieLinks(actorID int) error {
 	_, err := r.db.Exec("DELETE FROM movie_actors WHERE actor_id = ?", actorID)
 	return err
+}
+
+// SetMovies replaces the set of movies an actor is associated with. The
+// current links are removed and the ones in movieIDs are inserted. An empty
+// slice leaves the actor with no movies. The replace happens in one
+// transaction, so a bad id changes nothing.
+func (r *ActorRepository) SetMovies(actorID int, movieIDs []int) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// remove old links between actor and movies, then set the new ones
+	if _, err := tx.Exec("DELETE FROM movie_actors WHERE actor_id = ?", actorID); err != nil {
+		return err
+	}
+
+	for _, movieID := range movieIDs {
+		var exists int
+		err := tx.QueryRow("SELECT 1 FROM Movie WHERE id = ?", movieID).Scan(&exists)
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("%w: movie with id %d does not exist", models.ErrInvalidInput, movieID)
+		}
+		if err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(
+			"INSERT OR IGNORE INTO movie_actors (movie_id, actor_id) VALUES (?, ?)", movieID, actorID); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
