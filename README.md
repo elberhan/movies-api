@@ -60,7 +60,7 @@ All endpoints use the `/api` prefix and JSON. Endpoints returning many items (fo
 
 ### Movies
 
-Created together with genre and actor IDs (`duration` in seconds; minimum of 1 genre and 1 actor required):
+Created together with genre and actor IDs (`duration` in seconds). Genres and actors are **optional** . a movie may be created with none, or the lists may be omitted entirely:
 
 ```json
 {
@@ -109,7 +109,13 @@ Errors use sentinel values in `models/errors.go`, mapped to HTTP statuses in `ha
 | ------------------------------------- | --------------------------- |
 | `ErrNotFound`                         | `404 Not Found`             |
 | `ErrInvalidInput` / `ErrHasRelations` | `400 Bad Request`           |
+| `ErrConflict`                         | `409 Conflict`              |
 | anything else                         | `500 Internal Server Error` |
+
+**Duplicate names:** genre names are unique (`name` is `UNIQUE COLLATE NOCASE` in `db/schema.sql`). Creating a genre whose name already exists — in any letter case — returns `409 Conflict` with a message such as `genre 'Action' already exists`, rather than a confusing `500`. The conflict is detected from the database's `UNIQUE` violation rather than a check-then-insert, so it stays correct even under concurrent requests.
+
+Movie titles and actor names are intentionally **not** unique. Genres form a small controlled vocabulary where a duplicate is always a mistake, while real movie databases legitimately contain same-titled remakes and actors who happen to share a name. Identity is the `id` primary key, which is what every relationship uses; the title/name is display data, not identity.
+
 
 ## Architecture
 

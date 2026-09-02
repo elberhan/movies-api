@@ -3,6 +3,9 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"fmt"
+
+	sqlite3 "github.com/mattn/go-sqlite3"
 
 	"gitea.kood.tech/nikolailetshev/movies-api/models"
 )
@@ -19,6 +22,11 @@ func NewGenreRepository(db *sql.DB) *GenreRepository {
 func (r *GenreRepository) Create(name string) (*models.Genre, error) {
 	result, err := r.db.Exec("INSERT INTO Genre (name) VALUES (?)", name)
 	if err != nil {
+		//change the 500 to 409
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+			return nil, fmt.Errorf("%w: genre '%s' already exists", models.ErrConflict, name)
+		}
 		return nil, err
 	}
 	id, err := result.LastInsertId()

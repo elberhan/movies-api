@@ -82,8 +82,8 @@ func createGenreAndActor(t *testing.T, mux *http.ServeMux) (genreID, actorID int
 	return genreID, a.ID
 }
 
-// createMovie posts a valid movie (a genre + actor are required by the
-// service) and returns its id.
+// createMovie posts a valid movie and returns its id. A genre + actor is the
+// normal case; a movie may also be created with no links at all.
 func createMovie(t *testing.T, mux *http.ServeMux, title string, year, dur int, genreIDs, actorIDs []int) int {
 	t.Helper()
 	body, _ := json.Marshal(map[string]any{
@@ -149,6 +149,57 @@ func TestMovieCreateInvalidBody(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "error") {
 		t.Fatalf("expected error object, got %s", rec.Body.String())
+	}
+}
+
+func TestMovieCreateWithNoLinks(t *testing.T) {
+	mux := newMovieMux(t)
+
+	// genres and actors are optional; a movie may be created with no links
+	rec := doRequest(t, mux, http.MethodPost, "/api/movies",
+		`{"title":"Orphan","releaseYear":2020,"duration":90,"genres":[],"actors":[]}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var movie struct {
+		Genres []any `json:"genres"`
+		Actors []any `json:"actors"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &movie); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(movie.Genres) != 0 || len(movie.Actors) != 0 {
+		t.Fatalf("expected empty genre/actor lists, got genres=%v actors=%v", movie.Genres, movie.Actors)
+	}
+
+	// omitting the lists entirely is also allowed
+	rec = doRequest(t, mux, http.MethodPost, "/api/movies",
+		`{"title":"Orphan 2","releaseYear":2021,"duration":90}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("omitted lists: expected 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMoviePatchClearsLinks(t *testing.T) {
+	mux := newMovieMux(t)
+	gid, aid := createGenreAndActor(t, mux)
+	id := createMovie(t, mux, "Inception", 2010, 148, []int{gid}, []int{aid})
+
+	// an explicit empty list clears all of that link (like PATCH actor movies:[])
+	rec := doRequest(t, mux, http.MethodPatch, "/api/movies/"+strconv.Itoa(id),
+		`{"genres":[],"actors":[]}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var movie struct {
+		Genres []any `json:"genres"`
+		Actors []any `json:"actors"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &movie); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(movie.Genres) != 0 || len(movie.Actors) != 0 {
+		t.Fatalf("expected cleared links, got genres=%v actors=%v", movie.Genres, movie.Actors)
 	}
 }
 

@@ -329,10 +329,6 @@ func (r *MovieRepository) ForceDelete(id int) error {
 // setGenresTx replaces the genre links of the movie inside the caller's
 // transaction, so that it can share one commit with other writes.
 func setGenresTx(tx *sql.Tx, movieID int, genreIDs []int) error {
-	if len(genreIDs) == 0 {
-		return fmt.Errorf("%w: a movie must have a minimum of one genre", models.ErrInvalidInput)
-	}
-
 	// remove old links to genres and set new ones
 	if _, err := tx.Exec("DELETE FROM movie_genres WHERE movie_id = ?", movieID); err != nil {
 		return err
@@ -360,10 +356,6 @@ func setGenresTx(tx *sql.Tx, movieID int, genreIDs []int) error {
 // setActorsTx replaces the actors linked with specified movie inside the caller's
 // transaction, so that it can share one commit with other writes.
 func setActorsTx(tx *sql.Tx, movieID int, actorIDs []int) error {
-	if len(actorIDs) == 0 {
-		return fmt.Errorf("%w: a movie must have a minimum of one actor", models.ErrInvalidInput)
-	}
-
 	// remove old links between movie and actors, and set new ones
 	if _, err := tx.Exec("DELETE FROM movie_actors WHERE movie_id = ?", movieID); err != nil {
 		return err

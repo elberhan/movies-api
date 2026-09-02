@@ -16,6 +16,9 @@ func writeError(w http.ResponseWriter, err error) {
 	case errors.Is(err, models.ErrInvalidInput), errors.Is(err, models.ErrHasRelations):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 
+	case errors.Is(err, models.ErrConflict):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+
 	default:
 		log.Printf("internal: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})

@@ -39,13 +39,6 @@ func (s *MovieService) Create(title string, releaseYear, duration int, genreIDs,
 		return nil, err
 	}
 
-	if len(genreIDs) == 0 {
-		return nil, fmt.Errorf("%w: field 'genres' needs a minimum of one genre id", models.ErrInvalidInput)
-	}
-	if len(actorIDs) == 0 {
-		return nil, fmt.Errorf("%w: field 'actors' needs a minimum of one actor id", models.ErrInvalidInput)
-	}
-
 	movie, err := s.repo.Create(title, releaseYear, duration, genreIDs, actorIDs)
 	if err != nil {
 		return nil, err
@@ -173,13 +166,9 @@ func (s *MovieService) UpdatePartial(id int, title *string, releaseYear, duratio
 		updated.Duration = *duration
 	}
 
-	// reject an empty list here, so that a bad request never opens a transaction
-	if genreIDs != nil && len(genreIDs) == 0 {
-		return nil, fmt.Errorf("%w: field 'genres' needs a minimum of one genre id", models.ErrInvalidInput)
-	}
-	if actorIDs != nil && len(actorIDs) == 0 {
-		return nil, fmt.Errorf("%w: field 'actors' needs a minimum of one actor id", models.ErrInvalidInput)
-	}
+	// genreIDs/actorIDs are nil when the request does not mention them (leave
+	// the links untouched); an explicit empty list clears all of that link.
+	// No minimum is enforced - a movie may have zero genres or actors.
 
 	if _, err := s.repo.Update(id, &updated, genreIDs, actorIDs); err != nil {
 		return nil, err

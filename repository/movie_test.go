@@ -235,3 +235,31 @@ func TestMovieForceDeleteClearsLinks(t *testing.T) {
 		t.Fatalf("expected 0 actor links, got %d", count)
 	}
 }
+
+func TestMovieUpdateClearsLinksWithEmptyLists(t *testing.T) {
+	db := newTestDB(t)
+	movieRepo := NewMovieRepository(db)
+	genreRepo := NewGenreRepository(db)
+	actorRepo := NewActorRepository(db)
+
+	g, _ := genreRepo.Create("Sci-Fi")
+	a, _ := actorRepo.Create("Leo", "1974-11-11")
+
+	m, err := movieRepo.Create("Inception", 2010, 148, []int{g.ID}, []int{a.ID})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	// an explicit (non-nil) empty list must clear that link, not error
+	updated := &models.Movie{Title: "Inception", ReleaseYear: 2010, Duration: 148}
+	if _, err := movieRepo.Update(m.ID, updated, []int{}, []int{}); err != nil {
+		t.Fatalf("update with empty lists: %v", err)
+	}
+
+	if count, _ := genreRepo.MovieCount(g.ID); count != 0 {
+		t.Fatalf("expected 0 genre links after clear, got %d", count)
+	}
+	if count, _ := actorRepo.MovieCount(a.ID); count != 0 {
+		t.Fatalf("expected 0 actor links after clear, got %d", count)
+	}
+}
