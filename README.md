@@ -60,7 +60,7 @@ All endpoints use the `/api` prefix and JSON. Endpoints returning many items (fo
 
 ### Movies
 
-Created together with genre and actor IDs (`duration` in seconds; minimum of 1 genre and 1 actor required):
+Created together with genre and actor IDs (`duration` in seconds). Genres and actors are **optional** . a movie may be created with none, or the lists may be omitted entirely:
 
 ```json
 {
