@@ -28,6 +28,20 @@ func TestGenreCreateAndGetByID(t *testing.T) {
 	}
 }
 
+func TestGenreCreateDuplicateConflict(t *testing.T) {
+	db := newTestDB(t)
+	repo := NewGenreRepository(db)
+
+	if _, err := repo.Create("Sci-Fi"); err != nil {
+		t.Fatalf("first create: %v", err)
+	}
+
+	_, err := repo.Create("Sci-Fi")
+	if !errors.Is(err, models.ErrConflict) {
+		t.Fatalf("expected ErrConflict for duplicate, got %v", err)
+	}
+}
+
 func TestGenreGetByIDNotFound(t *testing.T) {
 	db := newTestDB(t)
 	repo := NewGenreRepository(db)

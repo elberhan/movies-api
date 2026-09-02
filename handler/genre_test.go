@@ -83,6 +83,40 @@ func TestGenreCreateHandler(t *testing.T) {
 	}
 }
 
+func TestGenreCreateDuplicateConflict(t *testing.T) {
+	h := newGenreTestHandler(t)
+	mux := newGenreMux(h)
+
+	// first create succeeds
+	rec := doRequest(t, mux, http.MethodPost, "/api/genres", `{"name":"Sci-Fi"}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("first create: expected 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// exact duplicate must be a 409 Conflict, not a 500
+	rec = doRequest(t, mux, http.MethodPost, "/api/genres", `{"name":"Sci-Fi"}`)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("duplicate create: expected 409, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "already exists") {
+		t.Fatalf("expected descriptive conflict message, got %s", rec.Body.String())
+	}
+}
+
+func TestGenreCreateDuplicateCaseInsensitiveConflict(t *testing.T) {
+	h := newGenreTestHandler(t)
+	mux := newGenreMux(h)
+
+	if rec := doRequest(t, mux, http.MethodPost, "/api/genres", `{"name":"Action"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("first create: expected 201, got %d", rec.Code)
+	}
+	// the name column is COLLATE NOCASE, so a different-case duplicate also conflicts
+	rec := doRequest(t, mux, http.MethodPost, "/api/genres", `{"name":"action"}`)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("case-insensitive duplicate: expected 409, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestGenreCreateMissingName(t *testing.T) {
 	h := newGenreTestHandler(t)
 	mux := newGenreMux(h)
