@@ -1,7 +1,7 @@
 {
   "info": {
     "_postman_id": "movies-api-collection",
-    "name": "Movies API",
+    "name": "Movie Database API",
     "description": "End-to-end tests for the Movies API. Start the server with `go run ./...` (defaults to :8080) then run this collection.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -485,10 +485,10 @@
     },
     {
       "name": "Movies",
-      "description": "Placeholder - the Movie entity is not implemented yet. These will return 404 until Nikolai's Movie API lands.",
+      "description": "CRUD and filter tests for the Movie entity. Run the Genres and Actors folders first so that {{genreId}} and {{actorId}} are captured.",
       "item": [
         {
-          "name": "Create movie",
+          "name": "Create movie (with genre + actor)",
           "request": {
             "method": "POST",
             "header": [
@@ -501,12 +501,31 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"title\": \"Test Movie\",\n    \"releaseYear\": 2020,\n    \"duration\": 120\n}"
+              "raw": "{\n    \"title\": \"Inception\",\n    \"releaseYear\": 2010,\n    \"duration\": 8880,\n    \"genres\": [{{genreId}}],\n    \"actors\": [{{actorId}}]\n}"
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"returns the movie with linked genres and actors\", () => {",
+                  "    pm.expect(body.id).to.be.a('number');",
+                  "    pm.expect(body.title).to.eql('Inception');",
+                  "    pm.expect(body.genres).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(body.actors).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "pm.collectionVariables.set(\"movieId\", body.id);"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "List movies",
+          "name": "List movies (paginated)",
           "request": {
             "method": "GET",
             "url": {
@@ -518,50 +537,222 @@
                 { "key": "size", "value": "10" }
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Page shape valid\", () => {",
+                  "    const p = pm.response.json();",
+                  "    pm.expect(p.content).to.be.an('array');",
+                  "    pm.expect(p.page).to.be.a('number');",
+                  "    pm.expect(p.size).to.be.a('number');",
+                  "    pm.expect(p.totalElements).to.be.a('number');",
+                  "    pm.expect(p.totalPages).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter movies by genre",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/movies?genre={{genreId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies"],
+              "query": [
+                { "key": "genre", "value": "{{genreId}}" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"returns only movies in the genre\", () => {",
+                  "    const titles = pm.response.json().content.map(m => m.title);",
+                  "    pm.expect(titles).to.include('Inception');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search movies by title",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/search?title=inception",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies", "search"],
+              "query": [
+                { "key": "title", "value": "inception" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"case-insensitive partial match finds Inception\", () => {",
+                  "    const titles = pm.response.json().content.map(m => m.title.toLowerCase());",
+                  "    pm.expect(titles).to.include('inception');",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get movie by id",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/api/movies/1",
+              "raw": "{{baseUrl}}/api/movies/{{movieId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "movies", "1"]
+              "path": ["api", "movies", "{{movieId}}"]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"returns the movie with its full genre and actor lists\", () => {",
+                  "    const m = pm.response.json();",
+                  "    pm.expect(m.id).to.eql(pm.collectionVariables.get('movieId'));",
+                  "    pm.expect(m.title).to.eql('Inception');",
+                  "    pm.expect(m.genres).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(m.actors).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Update movie",
+          "name": "Get movie by id - not found",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/99999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies", "99999"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"returns error object\", () => pm.expect(pm.response.json().error).to.exist);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get movie actors",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/{{movieId}}/actors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies", "{{movieId}}", "actors"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"returns the actors starring in the movie\", () => {",
+                  "    const p = pm.response.json();",
+                  "    pm.expect(p.content).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update movie (partial PATCH)",
           "request": {
             "method": "PATCH",
             "header": [
               { "key": "Content-Type", "value": "application/json" }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/movies/1",
+              "raw": "{{baseUrl}}/api/movies/{{movieId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "movies", "1"]
+              "path": ["api", "movies", "{{movieId}}"]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"title\": \"Renamed Movie\"\n}"
+              "raw": "{\n    \"title\": \"Inception - Director's Cut\"\n}"
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"only the title is changed, year/duration untouched\", () => {",
+                  "    const m = pm.response.json();",
+                  "    pm.expect(m.title).to.eql(\"Inception - Director's Cut\")",
+                  "    pm.expect(m.releaseYear).to.eql(2010);",
+                  "    pm.expect(m.duration).to.eql(8880);",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Delete movie",
+          "name": "Delete movie (force)",
           "request": {
             "method": "DELETE",
             "url": {
-              "raw": "{{baseUrl}}/api/movies/1?force=true",
+              "raw": "{{baseUrl}}/api/movies/{{movieId}}?force=true",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "movies", "1"],
+              "path": ["api", "movies", "{{movieId}}"],
               "query": [
                 { "key": "force", "value": "true" }
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
