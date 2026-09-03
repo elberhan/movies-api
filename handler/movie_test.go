@@ -302,6 +302,48 @@ func TestMovieFilterByGenreHandler(t *testing.T) {
 	}
 }
 
+func TestMovieFilterNoMatchIsNotFound(t *testing.T) {
+	mux := newMovieMux(t)
+	gid, aid := createGenreAndActor(t, mux)
+	createMovie(t, mux, "Inception", 2010, 148, []int{gid}, []int{aid})
+
+	emptyGenre := createGenre(t, mux, "Western")
+	emptyActor := createActor(t, mux, "Nobody")
+
+	tests := []struct {
+		name   string
+		target string
+		want   string
+	}{
+		{"unknown genre", "/api/movies?genre=999", "genre with id 999 does not exist"},
+		{"unknown actor", "/api/movies?actor=999", "actor with id 999 does not exist"},
+		{"genre without movies", "/api/movies?genre=" + strconv.Itoa(emptyGenre), "no movies found for genre"},
+		{"actor without movies", "/api/movies?actor=" + strconv.Itoa(emptyActor), "no movies found for actor"},
+		{"year without movies", "/api/movies?year=1900", "no movies found for year 1900"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := doRequest(t, mux, http.MethodGet, tt.target, "")
+			if rec.Code != http.StatusNotFound {
+				t.Fatalf("expected 404, got %d: %s", rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), tt.want) {
+				t.Fatalf("expected message %q, got %s", tt.want, rec.Body.String())
+			}
+		})
+	}
+
+	// an empty catalogue or an unmatched title search stays a 200 empty page
+	empty := newMovieMux(t)
+	if rec := doRequest(t, empty, http.MethodGet, "/api/movies", ""); rec.Code != http.StatusOK {
+		t.Fatalf("empty list: expected 200, got %d", rec.Code)
+	}
+	if rec := doRequest(t, mux, http.MethodGet, "/api/movies/search?title=zzz", ""); rec.Code != http.StatusOK {
+		t.Fatalf("empty search: expected 200, got %d", rec.Code)
+	}
+}
+
 func TestMovieGetCastAndGenres(t *testing.T) {
 	mux := newMovieMux(t)
 	gid, aid := createGenreAndActor(t, mux)

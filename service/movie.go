@@ -62,12 +62,15 @@ func (s *MovieService) GetDetail(id int) (*models.MovieDetail, error) {
 	return s.detail(id)
 }
 
-// List answers GET /api/movies. Every set field of filter narrows the result,
-// and an unknown id gives an empty page, because a filter that matches nothing
-// is not a missing resource.
+// List answers GET /api/movies, narrowed by each filter field that was set. An
+// unmatched genre/actor/year filter is a not-found error; an empty catalogue is not.
 func (s *MovieService) List(filter models.MovieFilter, page, size int) (*models.Page, error) {
 	page, size, err := validatePagination(page, size)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.checkFilterTargets(filter); err != nil {
 		return nil, err
 	}
 
@@ -75,7 +78,54 @@ func (s *MovieService) List(filter models.MovieFilter, page, size int) (*models.
 	if err != nil {
 		return nil, err
 	}
+	if total == 0 {
+		if err := emptyFilterError(filter); err != nil {
+			return nil, err
+		}
+	}
 	return newPage(movies, page, size, total), nil
+}
+
+// checkFilterTargets rejects a filter which genre/actor absent in the database.
+func (s *MovieService) checkFilterTargets(filter models.MovieFilter) error {
+	if filter.GenreID != nil {
+		exists, err := s.repo.GenreExists(*filter.GenreID)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return fmt.Errorf("%w: genre with id %d does not exist", models.ErrNotFound, *filter.GenreID)
+		}
+	}
+	if filter.ActorID != nil {
+		exists, err := s.repo.ActorExists(*filter.ActorID)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return fmt.Errorf("%w: actor with id %d does not exist", models.ErrNotFound, *filter.ActorID)
+		}
+	}
+	return nil
+}
+
+// emptyFilterError reports which filters matched no movie. Returns nil when the request has 
+// no genre/actor/year filter, since an empty result is a valid answer, not a missing resource.
+func emptyFilterError(filter models.MovieFilter) error {
+	var parts []string
+	if filter.GenreID != nil {
+		parts = append(parts, fmt.Sprintf("genre with id %d", *filter.GenreID))
+	}
+	if filter.ActorID != nil {
+		parts = append(parts, fmt.Sprintf("actor with id %d", *filter.ActorID))
+	}
+	if filter.Year != nil {
+		parts = append(parts, fmt.Sprintf("year %d", *filter.Year))
+	}
+	if len(parts) == 0 {
+		return nil
+	}
+	return fmt.Errorf("%w: no movies found for %s", models.ErrNotFound, strings.Join(parts, " and "))
 }
 
 func (s *MovieService) GetAll(page, size int) (*models.Page, error) {
