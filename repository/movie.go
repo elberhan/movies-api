@@ -132,6 +132,21 @@ func (r *MovieRepository) Find(f models.MovieFilter, limit, offset int) (page []
 	return page, totalMovies, nil
 }
 
+// GenreExists reports whether the given genre id is in the database. A filter
+// on an unknown id must not look the same as one that matches no movie.
+func (r *MovieRepository) GenreExists(id int) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow("SELECT EXISTS(SELECT 1 FROM Genre WHERE id = ?)", id).Scan(&exists)
+	return exists, err
+}
+
+// ActorExists reports whether the given actor id is in the database.
+func (r *MovieRepository) ActorExists(id int) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow("SELECT EXISTS(SELECT 1 FROM Actor WHERE id = ?)", id).Scan(&exists)
+	return exists, err
+}
+
 // GetAll fetches one page of movies: limit rows, starting after offset rows.
 // totalRows is the total row count in the Movie table.
 func (r *MovieRepository) GetAll(limit, offset int) (page []*models.Movie, totalRows int, err error) {
