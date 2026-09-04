@@ -23,7 +23,9 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 // decodeJSON reads a request body into out (any struct pointer).
 func decodeJSON(r *http.Request, out any) error {
-	if err := json.NewDecoder(r.Body).Decode(out); err != nil {
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields() // reject unknown fields instead of silently dropping them
+	if err := dec.Decode(out); err != nil {
 		return fmt.Errorf("%w: invalid JSON body: %v", models.ErrInvalidInput, err)
 	}
 	return nil
